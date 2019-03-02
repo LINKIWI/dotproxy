@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"time"
 )
 
 // ConnectionLifecycleHook is a metrics hook interface for reporting events that occur during a TCP
@@ -33,6 +34,25 @@ type ConnectionIOHook interface {
 	EmitRetry(addr net.Addr)
 }
 
+// ProxyHook is a metrics hook interface for reporting events and latencies related to end-to-end
+// proxying of a client request with an upstream server.
+type ProxyHook interface {
+	// EmitRequestSize reports the size of the proxied request on the wire.
+	EmitRequestSize(bytes int64, client net.Addr)
+
+	// EmitResponseSize reports the size of the proxied response on the wire.
+	EmitResponseSize(bytes int64, upstream net.Addr)
+
+	// EmitRTT reports the total, end-to-end latency associated with serving a single request
+	// from a client. This includes the time to establish/teardown all connections, transact
+	// with the upstream, and proxy the response to/from the client.
+	EmitRTT(latency time.Duration, client net.Addr, upstream net.Addr)
+
+	// EmitUpstreamLatency reports the latency associated with transacting with the upstream
+	// to serve a single request.
+	EmitUpstreamLatency(latency time.Duration, client net.Addr, upstream net.Addr)
+}
+
 // AsyncStatsdConnectionLifecycleHook is an implementation of ConnectionLifecycleHook that outputs
 // metrics asynchronously to statsd.
 type AsyncStatsdConnectionLifecycleHook struct {
@@ -45,6 +65,12 @@ type AsyncStatsdConnectionLifecycleHook struct {
 type AsyncStatsdConnectionIOHook struct {
 	client *StatsdClient
 	source string
+}
+
+// AsyncStatsdProxyHook is an implementation of ProxyHook that outputs metrics asynchronously to
+// statsd.
+type AsyncStatsdProxyHook struct {
+	client *StatsdClient
 }
 
 // NewAsyncStatsdConnectionLifecycleHook creates a new client with the specified source, statsd
@@ -112,6 +138,43 @@ func (h *AsyncStatsdConnectionIOHook) EmitRetry(addr net.Addr) {
 	go h.client.Count(fmt.Sprintf("event.%s.io_retry", h.source), 1, map[string]string{
 		"addr":      ipFromAddr(addr),
 		"transport": transportFromAddr(addr),
+	})
+}
+
+// NewAsyncStatsdProxyHook creates a new client with the specified statsd address and sample rate.
+func NewAsyncStatsdProxyHook(addr string, sampleRate float32) (ProxyHook, error) {
+	client, err := statsdClientFactory(addr, sampleRate)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AsyncStatsdProxyHook{client}, nil
+}
+
+func (h *AsyncStatsdProxyHook) EmitRequestSize(bytes int64, client net.Addr) {
+	go h.client.Size("size.proxy.request", bytes, map[string]string{
+		"addr": ipFromAddr(client),
+	})
+}
+
+func (h *AsyncStatsdProxyHook) EmitResponseSize(bytes int64, upstream net.Addr) {
+	go h.client.Size("size.proxy.response", bytes, map[string]string{
+		"addr": ipFromAddr(upstream),
+	})
+}
+
+func (h *AsyncStatsdProxyHook) EmitRTT(latency time.Duration, client net.Addr, upstream net.Addr) {
+	go h.client.Timing("latency.proxy.tx_rtt", latency, map[string]string{
+		"client":    ipFromAddr(client),
+		"upstream":  ipFromAddr(upstream),
+		"transport": transportFromAddr(client),
+	})
+}
+
+func (h *AsyncStatsdProxyHook) EmitUpstreamLatency(latency time.Duration, client net.Addr, upstream net.Addr) {
+	go h.client.Timing("latency.proxy.tx_upstream", latency, map[string]string{
+		"client":   ipFromAddr(client),
+		"upstream": ipFromAddr(upstream),
 	})
 }
 
