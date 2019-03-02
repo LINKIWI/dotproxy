@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 )
@@ -88,7 +89,7 @@ func NewUDPServer(addr string, opts UDPServerOpts) *UDPServer {
 func (s *UDPServer) ListenAndServe(handler ServerHandler) error {
 	conn, err := net.ListenPacket("udp", s.addr)
 	if err != nil {
-		return err
+		return fmt.Errorf("server: failed to listen on UDP socket: err=%v", err)
 	}
 
 	ctx := context.WithValue(context.Background(), TransportContextKey, UDP)
@@ -119,7 +120,7 @@ func NewTCPServer(addr string, opts TCPServerOpts) *TCPServer {
 func (s *TCPServer) ListenAndServe(handler ServerHandler) error {
 	ln, err := net.Listen("tcp", s.addr)
 	if err != nil {
-		return err
+		return fmt.Errorf("server: failed to listen on TCP socket: err=%v", err)
 	}
 
 	ctx := context.WithValue(context.Background(), TransportContextKey, TCP)
