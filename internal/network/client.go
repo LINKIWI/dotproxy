@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"strings"
 )
 
 // LoadBalancingPolicy formalizes the load balancing decision policy to apply when proxying requests
@@ -156,4 +157,22 @@ func (c *ShardedClient) selectFewestHistoricalConnections() Client {
 	}
 
 	return client
+}
+
+// ParseLoadBalancingPolicy parses a LoadBalancingPolicy constant from its stringified
+// representation in a case-insensitive manner.
+func ParseLoadBalancingPolicy(lbPolicy string) (LoadBalancingPolicy, bool) {
+	knownLbPolicies := []LoadBalancingPolicy{
+		RoundRobin,
+		Random,
+		FewestHistoricalConnections,
+	}
+
+	for _, knownLbPolicy := range knownLbPolicies {
+		if strings.ToLower(lbPolicy) == strings.ToLower(knownLbPolicy.String()) {
+			return knownLbPolicy, true
+		}
+	}
+
+	return RoundRobin, false
 }
