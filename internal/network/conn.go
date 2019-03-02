@@ -7,7 +7,8 @@ import (
 )
 
 // UDPConn is an abstraction over a UDP net.PacketConn to give it net.Conn-like semantics. It
-// statefully tracks connection state changes across reads and writes.
+// statefully tracks connection state changes across reads and writes, assuming that a write follows
+// an initial read.
 type UDPConn struct {
 	conn         net.PacketConn
 	readTimeout  time.Duration
