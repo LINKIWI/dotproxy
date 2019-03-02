@@ -74,6 +74,11 @@ const (
 
 // NewUDPServer creates a UDP server listening on the specified address.
 func NewUDPServer(addr string, opts UDPServerOpts) (*UDPServer, error) {
+	// Sane option defaults
+	if opts.MaxConcurrentConnections <= 0 {
+		opts.MaxConcurrentConnections = 16
+	}
+
 	return &UDPServer{addr, opts}, nil
 }
 
