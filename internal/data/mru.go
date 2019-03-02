@@ -15,8 +15,16 @@ type MRUQueue struct {
 }
 
 // NewMRUQueue creates a new MRU queue with the specified capacity.
+// The capacity may be any non-positive integer to disable the capacity limit.
 func NewMRUQueue(capacity int) *MRUQueue {
-	store := make(PriorityQueue, 0, capacity)
+	var store PriorityQueue
+
+	if capacity > 0 {
+		store = make(PriorityQueue, 0, capacity)
+	} else {
+		store = make(PriorityQueue, 0)
+	}
+
 	heap.Init(&store)
 
 	return &MRUQueue{store: &store, capacity: capacity}
@@ -29,7 +37,8 @@ func (m *MRUQueue) Push(value interface{}) bool {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	if m.store.Len() == m.capacity {
+	// Refuse to add beyond capacity
+	if m.capacity > 0 && m.store.Len() == m.capacity {
 		return false
 	}
 
