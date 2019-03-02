@@ -73,13 +73,13 @@ const (
 )
 
 // NewUDPServer creates a UDP server listening on the specified address.
-func NewUDPServer(addr string, opts UDPServerOpts) (*UDPServer, error) {
+func NewUDPServer(addr string, opts UDPServerOpts) *UDPServer {
 	// Sane option defaults
 	if opts.MaxConcurrentConnections <= 0 {
 		opts.MaxConcurrentConnections = 16
 	}
 
-	return &UDPServer{addr, opts}, nil
+	return &UDPServer{addr, opts}
 }
 
 // ListenAndServe starts listening on the UDP address with which the server was configured and
@@ -109,8 +109,8 @@ func (s *UDPServer) ListenAndServe(handler ServerHandler) error {
 }
 
 // NewTCPServer creates a TCP server listening on the specified address.
-func NewTCPServer(addr string, opts TCPServerOpts) (*TCPServer, error) {
-	return &TCPServer{addr, opts}, nil
+func NewTCPServer(addr string, opts TCPServerOpts) *TCPServer {
+	return &TCPServer{addr, opts}
 }
 
 // ListenAndServe starts listening on the TCP address with which the server was configured and
