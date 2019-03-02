@@ -45,8 +45,9 @@ type UpstreamServer struct {
 
 // UpstreamConfig is a top-level block for upstream configuration.
 type UpstreamConfig struct {
-	LoadBalancingPolicy string           `yaml:"load_balancing_policy"`
-	Servers             []UpstreamServer `yaml:"servers"`
+	LoadBalancingPolicy  string           `yaml:"load_balancing_policy"`
+	MaxConnectionRetries int              `yaml:"max_connection_retries"`
+	Servers              []UpstreamServer `yaml:"servers"`
 }
 
 // Config describes all application configuration options.
