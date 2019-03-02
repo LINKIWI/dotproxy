@@ -9,6 +9,8 @@ import (
 	"net"
 	"strings"
 	"time"
+
+	"dotproxy/internal/metrics"
 )
 
 // LoadBalancingPolicy formalizes the load balancing decision policy to apply when proxying requests
@@ -27,6 +29,7 @@ type Client interface {
 // TLSClient describes a TLS_secured TCP client that recycles connections in a pool.
 type TLSClient struct {
 	addr        string
+	cxHook      metrics.ConnectionLifecycleHook
 	pool        *PersistentConnPool
 	connections int
 }
@@ -62,7 +65,7 @@ const (
 // NewTLSClient creates a TLSClient pool, connected to a specified remote address.
 // This procedure will establish the initial connections, perform TLS handshakes, and validate the
 // server identity.
-func NewTLSClient(addr string, serverName string, opts TLSClientOpts) (*TLSClient, error) {
+func NewTLSClient(addr string, serverName string, cxHook metrics.ConnectionLifecycleHook, opts TLSClientOpts) (*TLSClient, error) {
 	cache := tls.NewLRUClientSessionCache(opts.PoolOpts.Capacity)
 	conf := &tls.Config{
 		ServerName:         serverName,
@@ -79,7 +82,7 @@ func NewTLSClient(addr string, serverName string, opts TLSClientOpts) (*TLSClien
 		return NewTCPConn(conn, opts.ReadTimeout, opts.WriteTimeout), nil
 	}
 
-	pool, err := NewPersistentConnPool(dialer, opts.PoolOpts)
+	pool, err := NewPersistentConnPool(dialer, cxHook, opts.PoolOpts)
 	if err != nil {
 		return nil, fmt.Errorf("client: error creating connection pool: err=%v", err)
 	}

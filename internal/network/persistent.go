@@ -5,12 +5,14 @@ import (
 	"time"
 
 	"dotproxy/internal/data"
+	"dotproxy/internal/metrics"
 )
 
 // PersistentConnPool is a pool of persistent, long-lived connections. Connections are returned to
 // the pool instead of closed for later reuse.
 type PersistentConnPool struct {
 	dialer       func() (net.Conn, error)
+	cxHook       metrics.ConnectionLifecycleHook
 	staleTimeout time.Duration
 	conns        *data.MRUQueue
 }
@@ -41,21 +43,25 @@ type PersistentConn struct {
 // NewPersistentConnPool creates a connection pool with the specified dialer factory and
 // configuration options.  The dialer is a net.Conn factory that describes how a new connection is
 // created.
-func NewPersistentConnPool(dialer func() (net.Conn, error), opts PersistentConnPoolOpts) (*PersistentConnPool, error) {
+func NewPersistentConnPool(dialer func() (net.Conn, error), cxHook metrics.ConnectionLifecycleHook, opts PersistentConnPoolOpts) (*PersistentConnPool, error) {
 	conns := data.NewMRUQueue(opts.Capacity)
 
 	// The entire pool is initially populated with live connections.
 	for i := 0; i < opts.Capacity; i++ {
 		conn, err := dialer()
 		if err != nil {
+			cxHook.EmitConnectionError()
 			return nil, err
 		}
+
+		cxHook.EmitConnectionOpen(conn.RemoteAddr())
 
 		conns.Push(conn)
 	}
 
 	return &PersistentConnPool{
 		dialer:       dialer,
+		cxHook:       cxHook,
 		staleTimeout: opts.StaleTimeout,
 		conns:        conns,
 	}, nil
@@ -71,6 +77,7 @@ func (p *PersistentConnPool) Conn() (*PersistentConn, error) {
 	closerFactory := func(conn net.Conn) func(destroyed bool) error {
 		return func(destroyed bool) error {
 			if destroyed {
+				p.cxHook.EmitConnectionClose(conn.RemoteAddr())
 				return conn.Close()
 			}
 
@@ -90,14 +97,18 @@ func (p *PersistentConnPool) Conn() (*PersistentConn, error) {
 		// The connection is stale; close it and open a new connection.
 		// We are not particularly interested in propagating errors that may occur from
 		// closing the connection, since it is already stale anyways.
+		p.cxHook.EmitConnectionClose(conn.RemoteAddr())
 		conn.Close()
 	}
 
 	// A cached connection is not available or stale; create a new one
 	conn, err := p.dialer()
 	if err != nil {
+		p.cxHook.EmitConnectionError()
 		return nil, err
 	}
+
+	p.cxHook.EmitConnectionOpen(conn.RemoteAddr())
 
 	return NewPersistentConn(conn, closerFactory(conn)), nil
 }
