@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"strings"
+	"time"
 )
 
 // LoadBalancingPolicy formalizes the load balancing decision policy to apply when proxying requests
@@ -28,6 +29,16 @@ type TLSClient struct {
 	addr        string
 	pool        *PersistentConnPool
 	connections int
+}
+
+// TLSClientOpts formalizes TLS client configuration options.
+type TLSClientOpts struct {
+	// PoolOpts are connection pool-specific options.
+	PoolOpts PersistentConnPoolOpts
+	// ReadTimeout is the timeout associated with each read from a remote connection.
+	ReadTimeout time.Duration
+	// WriteTimeout is the timeout associated with each write to a remote connection.
+	WriteTimeout time.Duration
 }
 
 // ShardedClient is an abstraction to manage several Clients whose connections are supplied in
@@ -51,15 +62,24 @@ const (
 // NewTLSClient creates a TLSClient pool, connected to a specified remote address.
 // This procedure will establish the initial connections, perform TLS handshakes, and validate the
 // server identity.
-func NewTLSClient(addr string, serverName string, poolOpts PersistentConnPoolOpts) (*TLSClient, error) {
-	cache := tls.NewLRUClientSessionCache(poolOpts.Capacity)
+func NewTLSClient(addr string, serverName string, opts TLSClientOpts) (*TLSClient, error) {
+	cache := tls.NewLRUClientSessionCache(opts.PoolOpts.Capacity)
 	conf := &tls.Config{
 		ServerName:         serverName,
 		ClientSessionCache: cache,
 	}
 
-	dialer := func() (net.Conn, error) { return tls.Dial("tcp", addr, conf) }
-	pool, err := NewPersistentConnPool(dialer, poolOpts)
+	// The dialer wraps a standard TLS dial with R/W timeouts.
+	dialer := func() (net.Conn, error) {
+		conn, err := tls.Dial("tcp", addr, conf)
+		if err != nil {
+			return nil, fmt.Errorf("client: error establishing connection: err=%v", err)
+		}
+
+		return NewTCPConn(conn, opts.ReadTimeout, opts.WriteTimeout), nil
+	}
+
+	pool, err := NewPersistentConnPool(dialer, opts.PoolOpts)
 	if err != nil {
 		return nil, fmt.Errorf("client: error creating connection pool: err=%v", err)
 	}

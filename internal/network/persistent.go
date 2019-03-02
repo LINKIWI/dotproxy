@@ -18,13 +18,13 @@ type PersistentConnPool struct {
 // PersistentConnPoolOpts formalizes configuration options for a persistent connection pool.
 type PersistentConnPoolOpts struct {
 	// Capacity is the maximum number of cached connections that may be held open in the pool.
-	// Depending on client and server behaviors, the actual number of connections open at any time
-	// may be less than or greater than this capacity. For example, there may be more connections to
-	// serve a high number of concurrent clients, and there may be fewer connections if many of them
-	// have been destroyed due to timeout or error.
+	// Depending on client and server behaviors, the actual number of connections open at any
+	// time may be less than or greater than this capacity. For example, there may be more
+	// connections to serve a high number of concurrent clients, and there may be fewer
+	// connections if many of them have been destroyed due to timeout or error.
 	Capacity int
-	// StaleTimeout is the duration after which a cached connection should be considered stale, and
-	// thus reconnected before use. This represents the time between connection I/O events.
+	// StaleTimeout is the duration after which a cached connection should be considered stale,
+	// and thus reconnected before use. This represents the time between connection I/O events.
 	StaleTimeout time.Duration
 }
 
@@ -77,8 +77,8 @@ func (p *PersistentConnPool) Conn() (*PersistentConn, error) {
 		}
 
 		// The connection is stale; close it and open a new connection
-		// We are not particularly interested in propagating errors that may occur from closing the
-		// connection; it is already stale anyways
+		// We are not particularly interested in propagating errors that may occur from
+		// closing the connection; it is already stale anyways
 		conn.Close()
 	}
 
