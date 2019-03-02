@@ -20,7 +20,7 @@ type StatsdClient struct {
 func NewStatsdClient(addr string, prefix string, defaultTags map[string]string, sampleRate float32) (*StatsdClient, error) {
 	client, err := statsd.NewClient(addr, prefix)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("statsd: error creating statsd client: err=%v", err)
 	}
 
 	return &StatsdClient{
