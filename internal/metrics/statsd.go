@@ -17,7 +17,7 @@ type StatsdClient struct {
 
 // NewStatsdClient creates a new statsd client pointing the specified listener/server address with
 // an optional prefix and set of default tags to include with every metric.
-func NewStatsdClient(addr string, prefix string, defaultTags map[string]string) (*StatsdClient, error) {
+func NewStatsdClient(addr string, prefix string, defaultTags map[string]string, sampleRate float32) (*StatsdClient, error) {
 	client, err := statsd.NewClient(addr, prefix)
 	if err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func NewStatsdClient(addr string, prefix string, defaultTags map[string]string) 
 	return &StatsdClient{
 		backend:     client,
 		defaultTags: defaultTags,
-		sampleRate:  1.0,
+		sampleRate:  sampleRate,
 	}, nil
 }
 
