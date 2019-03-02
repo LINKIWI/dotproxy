@@ -73,6 +73,16 @@ type AsyncStatsdProxyHook struct {
 	client *StatsdClient
 }
 
+// NoopConnectionLifecycleHook implements the ConnectionLifecycleHook interface but noops on all
+// emissions.
+type NoopConnectionLifecycleHook struct{}
+
+// NoopConnectionIOHook implements the ConnectionIOHook interface but noops on all emissions.
+type NoopConnectionIOHook struct{}
+
+// NoopProxyHook implements the ProxyHook interface but noops on all emissions.
+type NoopProxyHook struct{}
+
 // NewAsyncStatsdConnectionLifecycleHook creates a new client with the specified source, statsd
 // address, and statsd sample rate. The source denotes the entity with whom the server is opening
 // and closing TCP connections.
@@ -105,6 +115,12 @@ func (h *AsyncStatsdConnectionLifecycleHook) EmitConnectionClose(addr net.Addr) 
 func (h *AsyncStatsdConnectionLifecycleHook) EmitConnectionError() {
 	go h.client.Count(fmt.Sprintf("event.%s.cx_error", h.source), 1, nil)
 }
+
+func (h *NoopConnectionLifecycleHook) EmitConnectionOpen(addr net.Addr) {}
+
+func (h *NoopConnectionLifecycleHook) EmitConnectionClose(addr net.Addr) {}
+
+func (h *NoopConnectionLifecycleHook) EmitConnectionError() {}
 
 // NewAsyncStatsdConnectionIOHook creates a new client with the specified source, statsd address,
 // and statsd sample rate. The source denotes the entity with whom the server is performing I/O.
@@ -141,6 +157,12 @@ func (h *AsyncStatsdConnectionIOHook) EmitRetry(addr net.Addr) {
 	})
 }
 
+func (h *NoopConnectionIOHook) EmitReadError(addr net.Addr) {}
+
+func (h *NoopConnectionIOHook) EmitWriteError(addr net.Addr) {}
+
+func (h *NoopConnectionIOHook) EmitRetry(addr net.Addr) {}
+
 // NewAsyncStatsdProxyHook creates a new client with the specified statsd address and sample rate.
 func NewAsyncStatsdProxyHook(addr string, sampleRate float32) (ProxyHook, error) {
 	client, err := statsdClientFactory(addr, sampleRate)
@@ -176,6 +198,15 @@ func (h *AsyncStatsdProxyHook) EmitUpstreamLatency(latency time.Duration, client
 		"client":   ipFromAddr(client),
 		"upstream": ipFromAddr(upstream),
 	})
+}
+
+func (h *NoopProxyHook) EmitRequestSize(bytes int64, client net.Addr) {}
+
+func (h *NoopProxyHook) EmitResponseSize(bytes int64, upstream net.Addr) {}
+
+func (h *NoopProxyHook) EmitRTT(latency time.Duration, client net.Addr, upstream net.Addr) {}
+
+func (h *NoopProxyHook) EmitUpstreamLatency(latency time.Duration, client net.Addr, upstream net.Addr) {
 }
 
 // statsdClientFactory creates a configured StatsdClient with reasonable defaults for the given
