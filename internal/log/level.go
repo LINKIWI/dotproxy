@@ -2,6 +2,10 @@
 
 package log
 
+import (
+	"strings"
+)
+
 // Level parametrizes supported log verbosity levels.
 type Level int
 
@@ -15,6 +19,19 @@ const (
 	// Error messages indicate behavior that is not intended and should be corrected.
 	Error // ERROR
 )
+
+// ParseLevel looks up a Level constant by its stringified (case-insensitive) representation.
+func ParseLevel(level string) (Level, bool) {
+	knownLevels := []Level{Debug, Info, Warn, Error}
+
+	for _, knownLevel := range knownLevels {
+		if strings.ToLower(level) == strings.ToLower(knownLevel.String()) {
+			return knownLevel, true
+		}
+	}
+
+	return Error, false
+}
 
 // Enables indicates whether the current log level enables logging at another level.
 //
