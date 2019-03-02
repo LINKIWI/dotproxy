@@ -1,4 +1,5 @@
 # Generated code
+internal/log/level_string.go
 internal/network/loadbalancingpolicy_string.go
 
 # Application configuration
