@@ -32,7 +32,7 @@ type PersistentConnPoolOpts struct {
 // function instead of actually closing the underlying connection. It also augments the net.Conn API
 // by providing a Destroy() method that forcefully closes the underlying connection.
 type PersistentConn struct {
-	closer    func() error
+	closer    func(destroyed bool) error
 	destroyed bool
 
 	net.Conn
@@ -66,19 +66,30 @@ func NewPersistentConnPool(dialer func() (net.Conn, error), opts PersistentConnP
 func (p *PersistentConnPool) Conn() (*PersistentConn, error) {
 	value, timestamp, ok := p.conns.Pop()
 
+	// Factory for creating a closer callback that closes the connection if it is destroyed, but
+	// otherwise returns it to the cached connections pool.
+	closerFactory := func(conn net.Conn) func(destroyed bool) error {
+		return func(destroyed bool) error {
+			if destroyed {
+				return conn.Close()
+			}
+
+			return p.put(conn)
+		}
+	}
+
 	// A cached connection is available; attempt to use it
 	if ok {
 		conn := value.(net.Conn)
 
 		// The connection is not stale; use it
 		if p.staleTimeout <= 0 || time.Since(timestamp) < p.staleTimeout {
-			closer := func() error { return p.put(conn) }
-			return NewPersistentConn(conn, closer), nil
+			return NewPersistentConn(conn, closerFactory(conn)), nil
 		}
 
-		// The connection is stale; close it and open a new connection
+		// The connection is stale; close it and open a new connection.
 		// We are not particularly interested in propagating errors that may occur from
-		// closing the connection; it is already stale anyways
+		// closing the connection, since it is already stale anyways.
 		conn.Close()
 	}
 
@@ -88,8 +99,7 @@ func (p *PersistentConnPool) Conn() (*PersistentConn, error) {
 		return nil, err
 	}
 
-	closer := func() error { return p.put(conn) }
-	return NewPersistentConn(conn, closer), nil
+	return NewPersistentConn(conn, closerFactory(conn)), nil
 }
 
 // Size reports the current size of the connection pool.
@@ -109,23 +119,21 @@ func (p *PersistentConnPool) put(conn net.Conn) error {
 }
 
 // NewPersistentConn wraps an existing net.Conn with the specified close callback.
-func NewPersistentConn(conn net.Conn, closer func() error) *PersistentConn {
+func NewPersistentConn(conn net.Conn, closer func(destroyed bool) error) *PersistentConn {
 	return &PersistentConn{closer: closer, Conn: conn}
 }
 
 // Close will invoke the close callback if the connection has not been destroyed; otherwise, it is
-// a noop.
+// a noop. The callback is invoked with a single parameter describing whether the connection has
+// been marked as destroyed; the interpretation of a destroyed connection is abstracted out to the
+// PersistentConn callback supplier.
 func (c *PersistentConn) Close() error {
-	if !c.destroyed {
-		return c.closer()
-	}
-
-	return nil
+	return c.closer(c.destroyed)
 }
 
-// Destroy closes the underlying connection. It has the same behavior as Close() in a standard
-// net.Conn implementation.
+// Destroy markes the connection as destroyed and invokes the close callback.
 func (c *PersistentConn) Destroy() error {
 	c.destroyed = true
-	return c.Conn.Close()
+
+	return c.Close()
 }
