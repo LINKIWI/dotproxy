@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"time"
+
+	"dotproxy/internal/metrics"
 )
 
 // Transport describes a network transport type.
@@ -46,8 +48,9 @@ type UDPServerOpts struct {
 
 // TCPServer describes a server that listens on a TCP address.
 type TCPServer struct {
-	addr string
-	opts TCPServerOpts
+	addr   string
+	cxHook metrics.ConnectionLifecycleHook
+	opts   TCPServerOpts
 }
 
 // TCPServerOpts formalizes TCP server configuration options.
@@ -110,8 +113,8 @@ func (s *UDPServer) ListenAndServe(handler ServerHandler) error {
 }
 
 // NewTCPServer creates a TCP server listening on the specified address.
-func NewTCPServer(addr string, opts TCPServerOpts) *TCPServer {
-	return &TCPServer{addr, opts}
+func NewTCPServer(addr string, cxHook metrics.ConnectionLifecycleHook, opts TCPServerOpts) *TCPServer {
+	return &TCPServer{addr, cxHook, opts}
 }
 
 // ListenAndServe starts listening on the TCP address with which the server was configured and
@@ -128,13 +131,20 @@ func (s *TCPServer) ListenAndServe(handler ServerHandler) error {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
+			s.cxHook.EmitConnectionError()
 			handler.ConsumeError(ctx, err)
 			continue
 		}
 
 		tcpConn := NewTCPConn(conn, s.opts.ReadTimeout, s.opts.WriteTimeout)
+		s.cxHook.EmitConnectionOpen(tcpConn.RemoteAddr())
 
 		go func() {
+			defer func() {
+				s.cxHook.EmitConnectionClose(tcpConn.RemoteAddr())
+				tcpConn.Close()
+			}()
+
 			if err := handler.Handle(ctx, tcpConn); err != nil {
 				handler.ConsumeError(ctx, err)
 			}
