@@ -20,9 +20,29 @@ type ConnectionLifecycleHook interface {
 	EmitConnectionError()
 }
 
+// ConnectionIOHook is a metrics hook interface for reporting events related to I/O with an
+// established TCP or UDP connection.
+type ConnectionIOHook interface {
+	// EmitReadError reports the event that a connection read failed.
+	EmitReadError(addr net.Addr)
+
+	// EmitWriteError reports the event that a connection write failed.
+	EmitWriteError(addr net.Addr)
+
+	// EmitRetry reports the event that an I/O operation was retried due to failure.
+	EmitRetry(addr net.Addr)
+}
+
 // AsyncStatsdConnectionLifecycleHook is an implementation of ConnectionLifecycleHook that outputs
 // metrics asynchronously to statsd.
 type AsyncStatsdConnectionLifecycleHook struct {
+	client *StatsdClient
+	source string
+}
+
+// AsyncStatsdConnectionIOHook is an implementation of ConnectionIOHook that outputs metrics
+// asynchronously to statsd.
+type AsyncStatsdConnectionIOHook struct {
 	client *StatsdClient
 	source string
 }
@@ -58,6 +78,41 @@ func (h *AsyncStatsdConnectionLifecycleHook) EmitConnectionClose(addr net.Addr) 
 
 func (h *AsyncStatsdConnectionLifecycleHook) EmitConnectionError() {
 	go h.client.Count(fmt.Sprintf("event.%s.cx_error", h.source), 1, nil)
+}
+
+// NewAsyncStatsdConnectionIOHook creates a new client with the specified source, statsd address,
+// and statsd sample rate. The source denotes the entity with whom the server is performing I/O.
+func NewAsyncStatsdConnectionIOHook(source string, addr string, sampleRate float32) (ConnectionIOHook, error) {
+	client, err := statsdClientFactory(addr, sampleRate)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AsyncStatsdConnectionIOHook{
+		client: client,
+		source: source,
+	}, nil
+}
+
+func (h *AsyncStatsdConnectionIOHook) EmitReadError(addr net.Addr) {
+	go h.client.Count(fmt.Sprintf("event.%s.read_error", h.source), 1, map[string]string{
+		"addr":      ipFromAddr(addr),
+		"transport": transportFromAddr(addr),
+	})
+}
+
+func (h *AsyncStatsdConnectionIOHook) EmitWriteError(addr net.Addr) {
+	go h.client.Count(fmt.Sprintf("event.%s.write_error", h.source), 1, map[string]string{
+		"addr":      ipFromAddr(addr),
+		"transport": transportFromAddr(addr),
+	})
+}
+
+func (h *AsyncStatsdConnectionIOHook) EmitRetry(addr net.Addr) {
+	go h.client.Count(fmt.Sprintf("event.%s.io_retry", h.source), 1, map[string]string{
+		"addr":      ipFromAddr(addr),
+		"transport": transportFromAddr(addr),
+	})
 }
 
 // statsdClientFactory creates a configured StatsdClient with reasonable defaults for the given
