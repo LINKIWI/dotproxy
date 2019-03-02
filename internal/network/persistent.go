@@ -77,9 +77,9 @@ func (p *PersistentConnPool) Conn() (*PersistentConn, error) {
 		}
 
 		// The connection is stale; close it and open a new connection
-		if err := conn.Close(); err != nil {
-			return nil, err
-		}
+		// We are not particularly interested in propagating errors that may occur from closing the
+		// connection; it is already stale anyways
+		conn.Close()
 	}
 
 	// A cached connection is not available or stale; create a new one
