@@ -1,0 +1,57 @@
+pipeline {
+    agent {
+        dockerfile {
+            dir '.ci'
+            label 'docker-executor'
+        }
+    }
+
+    options {
+        withAWS(
+            endpointUrl: 'https://storage.kevinlin.info',
+            credentials: 'storage-internal',
+        )
+    }
+
+    stages {
+        stage('Environment') {
+            steps {
+                s3Download(
+                    bucket: 'internal',
+                    path: 'resources/dotproxy/config.yaml',
+                    file: 'config.yaml',
+                )
+            }
+        }
+        stage('Install') {
+            steps {
+                sh 'go get -d ./...'
+            }
+        }
+        stage('Lint') {
+            steps {
+               sh 'make lint'
+            }
+        }
+        stage('Build') {
+            environment {
+                GOOS = 'linux'
+                GOARCH = 'amd64'
+                VERSION_SHA = "${GIT_COMMIT}"
+            }
+            steps {
+                sh 'make'
+            }
+        }
+        stage('Release') {
+            steps {
+                sh 'tar -cvzf release.tar.gz bin/ init/ config.yaml'
+                s3Upload(
+                    bucket: 'internal',
+                    path: "deploy/${env.JOB_NAME}/${env.GIT_COMMIT}/",
+                    file: 'release.tar.gz',
+                )
+            }
+        }
+    }
+}
