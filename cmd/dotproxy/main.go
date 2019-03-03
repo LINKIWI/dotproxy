@@ -122,7 +122,13 @@ func main() {
 			opts.PoolOpts.Capacity,
 		)
 
-		client, err := network.NewTLSClient(server.Address, server.ServerName, upstreamCxLifecycleHook, opts)
+		client, err := network.NewTLSClient(
+			server.Address,
+			server.ServerName,
+			upstreamCxLifecycleHook,
+			opts,
+		)
+
 		if err != nil {
 			panic(err)
 		}
@@ -188,7 +194,11 @@ func main() {
 			WriteTimeout: config.Listener.TCP.WriteTimeout,
 		}
 
-		tcpServer := network.NewTCPServer(config.Listener.TCP.Address, clientCxLifecycleHook, opts)
+		tcpServer := network.NewTCPServer(
+			config.Listener.TCP.Address,
+			clientCxLifecycleHook,
+			opts,
+		)
 
 		go func() {
 			if err := tcpServer.ListenAndServe(h); err != nil {
