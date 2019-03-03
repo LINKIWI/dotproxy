@@ -20,8 +20,8 @@ type Transport int
 // ServerHandler is a common interface that wraps logic for handling incoming connections on any
 // network transport.
 type ServerHandler interface {
-	// Handle describes the routine to run when the server establishes a successful connection with
-	// a client. The passed conn is a net.Conn-implementing TCPConn or UDPConn.
+	// Handle describes the routine to run when the server establishes a successful connection
+	// with a client. The passed conn is a net.Conn-implementing TCPConn or UDPConn.
 	Handle(ctx context.Context, conn net.Conn) error
 
 	// ConsumeError is a callback invoked when the server fails to establish a connection with a
@@ -37,17 +37,18 @@ type UDPServer struct {
 
 // UDPServerOpts formalizes UDP server configuration options.
 type UDPServerOpts struct {
-	// MaxConcurrentConnections configures the maximum number of concurrent clients that the server
-	// is capable of serving. It is generally recommended to set this value to the highest number
-	// of concurrent connections the server can expect to receive, but it is safe to set it lower.
+	// MaxConcurrentConnections configures the maximum number of concurrent clients that the
+	// server is capable of serving. It is generally recommended to set this value to the
+	// highest number of concurrent connections the server can expect to receive, but it is safe
+	// to set it lower.
 	MaxConcurrentConnections int
-	// ReadTimeout is the maximum amount of time the server will wait to read from a client. Note
-	// that, since UDP is a connectionless protocol, this timeout value represents the duration of
-	// time between when the socket begins listening for a connection to when the client starts
-	// writing data.
+	// ReadTimeout is the maximum amount of time the server will wait to read from a client.
+	// Note that, since UDP is a connectionless protocol, this timeout value represents the
+	// duration of time between when the socket begins listening for a connection to when the
+	// client starts writing data.
 	ReadTimeout time.Duration
-	// WriteTimeout is the maximum amount of time the server is allowed to take to write data back
-	// to a client, after which the server will consider the write to have failed.
+	// WriteTimeout is the maximum amount of time the server is allowed to take to write data
+	// back to a client, after which the server will consider the write to have failed.
 	WriteTimeout time.Duration
 }
 
@@ -60,9 +61,9 @@ type TCPServer struct {
 
 // TCPServerOpts formalizes TCP server configuration options.
 type TCPServerOpts struct {
-	// ReadTimeout is the maximum amount of time the server will wait to read from a client after it
-	// has established a connection with the server, after which the server will consider the read
-	// to have failed.
+	// ReadTimeout is the maximum amount of time the server will wait to read from a client
+	// after it has established a connection with the server, after which the server will
+	// consider the read to have failed.
 	ReadTimeout time.Duration
 	// WriteTimeout is the maximum amount of time the server is allowed to take to write to a
 	// client, after which the server will consider the write to have failed.
