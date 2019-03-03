@@ -11,6 +11,9 @@ import (
 	"dotproxy/internal/metrics"
 )
 
+// contextKey is a type alias for context keys passed to server handlers.
+type contextKey int
+
 // Transport describes a network transport type.
 type Transport int
 
@@ -66,10 +69,13 @@ type TCPServerOpts struct {
 	WriteTimeout time.Duration
 }
 
-// TransportContextKey is the name of the context key used to indicate the network transport
-// protocol the handler is serving. This is necessary because the handler APIs are abstracted to the
-// point that they are inherently agnostic to the client connection's underlying transport.
-const TransportContextKey = "transport"
+const (
+	// TransportContextKey is the name of the context key used to indicate the network transport
+	// protocol the handler is serving. This is necessary because the handler APIs are
+	// abstracted to the point that they are inherently agnostic to the client connection's
+	// underlying transport.
+	TransportContextKey contextKey = iota
+)
 
 const (
 	// TCP describes a TCP transport.
