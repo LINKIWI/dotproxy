@@ -116,6 +116,11 @@ func (h *AsyncStatsdConnectionLifecycleHook) EmitConnectionError() {
 	go h.client.Count(fmt.Sprintf("event.%s.cx_error", h.source), 1, nil)
 }
 
+// NewNoopConnectionLifecycleHook creates a noop implementation of ConnectionLifecycleHook.
+func NewNoopConnectionLifecycleHook() ConnectionLifecycleHook {
+	return &NoopConnectionLifecycleHook{}
+}
+
 func (h *NoopConnectionLifecycleHook) EmitConnectionOpen(addr net.Addr) {}
 
 func (h *NoopConnectionLifecycleHook) EmitConnectionClose(addr net.Addr) {}
@@ -155,6 +160,11 @@ func (h *AsyncStatsdConnectionIOHook) EmitRetry(addr net.Addr) {
 		"addr":      ipFromAddr(addr),
 		"transport": transportFromAddr(addr),
 	})
+}
+
+// NoopConnectionIOHook creates a noop implementation of ConnectionIOHook.
+func NewNoopConnectionIOHook() ConnectionIOHook {
+	return &NoopConnectionIOHook{}
 }
 
 func (h *NoopConnectionIOHook) EmitReadError(addr net.Addr) {}
@@ -198,6 +208,11 @@ func (h *AsyncStatsdProxyHook) EmitUpstreamLatency(latency time.Duration, client
 		"client":   ipFromAddr(client),
 		"upstream": ipFromAddr(upstream),
 	})
+}
+
+// NewNoopProxyHook creates a noop implementation of ProxyHook.
+func NewNoopProxyHook() ProxyHook {
+	return &NoopProxyHook{}
 }
 
 func (h *NoopProxyHook) EmitRequestSize(bytes int64, client net.Addr) {}
