@@ -1,6 +1,7 @@
 package network
 
 import (
+	"fmt"
 	"net"
 	"time"
 
@@ -147,4 +148,9 @@ func (c *PersistentConn) Destroy() error {
 	c.destroyed = true
 
 	return c.Close()
+}
+
+// String implements the Stringer interface for human-consumable representation.
+func (c *PersistentConn) String() string {
+	return fmt.Sprintf("PersistentConn{%s->%s}", c.LocalAddr(), c.RemoteAddr())
 }
