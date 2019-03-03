@@ -1,6 +1,7 @@
 # Generated code
 internal/log/level_string.go
 internal/network/loadbalancingpolicy_string.go
+internal/network/transport_string.go
 
 # Application configuration
 config.yaml

@@ -1,3 +1,5 @@
+//go:generate stringer -type=Transport
+
 package network
 
 import (
