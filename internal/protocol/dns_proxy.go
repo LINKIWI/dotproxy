@@ -50,6 +50,12 @@ func (h *DNSProxyHandler) Handle(ctx context.Context, clientConn net.Conn) error
 		return err
 	}
 
+	h.Logger.Debug(
+		"dns_proxy: read request from client: request_bytes=%d transport=%s",
+		len(clientReq),
+		ctx.Value(network.TransportContextKey),
+	)
+
 	if ctx.Value(network.TransportContextKey) == network.UDP {
 		// Since UDP is connectionless, the initial network read blocks until data is
 		// available. Reset the RTT timer here to get an approximately correct estimate of
@@ -87,6 +93,12 @@ func (h *DNSProxyHandler) Handle(ctx context.Context, clientConn net.Conn) error
 		return err
 	}
 
+	h.Logger.Debug(
+		"dns_proxy: completed write back to client: rtt=%v transport=%s",
+		rttTxTimer.Elapsed(),
+		ctx.Value(network.TransportContextKey),
+	)
+
 	/* Clean up and report end-to-end metrics */
 
 	h.ProxyHook.EmitRequestSize(int64(len(clientReq)), clientConn.RemoteAddr())
@@ -117,15 +129,17 @@ func (h *DNSProxyHandler) clientRead(conn net.Conn) ([]byte, error) {
 // upstreamTransact performs a write-read transaction with the upstream connection and returns the
 // upstream response.
 func (h *DNSProxyHandler) upstreamTransact(client net.Conn, upstream *network.PersistentConn, clientReq []byte) ([]byte, error) {
-	/* Proxy the client request to the upstream */
-
 	upstreamTxTimer := metrics.NewTimer()
+
+	/* Proxy the client request to the upstream */
 
 	upstreamWriteBytes, err := upstream.Write(clientReq)
 	if err != nil || upstreamWriteBytes != len(clientReq) {
 		h.UpstreamCxIOHook.EmitWriteError(upstream.RemoteAddr())
 		return nil, fmt.Errorf("dns_proxy: error writing to upstream: err=%v", err)
 	}
+
+	h.Logger.Debug("dns_proxy: wrote request to upstream: request_bytes=%d", upstreamWriteBytes)
 
 	/* Read the response from the upstream */
 
@@ -145,6 +159,9 @@ func (h *DNSProxyHandler) upstreamTransact(client net.Conn, upstream *network.Pe
 	// Parse the alleged size of the remaining response and perform another exactly-sized read.
 	respSize := binary.BigEndian.Uint16(upstreamHeader)
 	upstreamResp := make([]byte, respSize)
+
+	h.Logger.Debug("dns_proxy: read upstream header: response_size=%d", respSize)
+
 	upstreamReadBytes, err := upstream.Read(upstreamResp)
 	if err != nil || upstreamReadBytes != int(respSize) {
 		h.UpstreamCxIOHook.EmitReadError(upstream.RemoteAddr())
@@ -154,6 +171,8 @@ func (h *DNSProxyHandler) upstreamTransact(client net.Conn, upstream *network.Pe
 			upstreamReadBytes,
 		)
 	}
+
+	h.Logger.Debug("dns_proxy: read upstream response: response_bytes=%d", upstreamReadBytes)
 
 	h.ProxyHook.EmitUpstreamLatency(
 		upstreamTxTimer.Elapsed(),
@@ -176,12 +195,19 @@ func (h *DNSProxyHandler) proxyUpstream(client net.Conn, clientReq []byte, retri
 		)
 	}
 
+	h.Logger.Debug("dns_proxy: created upstream connection: conn=%v", upstream)
+
 	resp, err := h.upstreamTransact(client, upstream, clientReq)
 	if err != nil && retries > 0 {
+		h.Logger.Debug("dns_proxy: upstream I/O failed; retrying: retry=%d", retries)
+
 		go upstream.Destroy()
 		h.UpstreamCxIOHook.EmitRetry(upstream.RemoteAddr())
+
 		return h.proxyUpstream(client, clientReq, retries-1)
 	}
+
+	h.Logger.Debug("dns_proxy: completed upstream proxy: response_bytes=%d", len(resp))
 
 	upstream.Close()
 
