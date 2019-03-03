@@ -98,6 +98,7 @@ func NewAsyncStatsdConnectionLifecycleHook(source string, addr string, sampleRat
 	}, nil
 }
 
+// EmitConnectionOpen statsd implementation
 func (h *AsyncStatsdConnectionLifecycleHook) EmitConnectionOpen(addr net.Addr) {
 	go h.client.Count(fmt.Sprintf("event.%s.cx_open", h.source), 1, map[string]string{
 		"addr":      ipFromAddr(addr),
@@ -105,6 +106,7 @@ func (h *AsyncStatsdConnectionLifecycleHook) EmitConnectionOpen(addr net.Addr) {
 	})
 }
 
+// EmitConnectionClose statsd implementation
 func (h *AsyncStatsdConnectionLifecycleHook) EmitConnectionClose(addr net.Addr) {
 	go h.client.Count(fmt.Sprintf("event.%s.cx_close", h.source), 1, map[string]string{
 		"addr":      ipFromAddr(addr),
@@ -112,6 +114,7 @@ func (h *AsyncStatsdConnectionLifecycleHook) EmitConnectionClose(addr net.Addr) 
 	})
 }
 
+// EmitConnectionError statsd implementation
 func (h *AsyncStatsdConnectionLifecycleHook) EmitConnectionError() {
 	go h.client.Count(fmt.Sprintf("event.%s.cx_error", h.source), 1, nil)
 }
@@ -121,10 +124,13 @@ func NewNoopConnectionLifecycleHook() ConnectionLifecycleHook {
 	return &NoopConnectionLifecycleHook{}
 }
 
+// EmitConnectionOpen noops.
 func (h *NoopConnectionLifecycleHook) EmitConnectionOpen(addr net.Addr) {}
 
+// EmitConnectionClose noops.
 func (h *NoopConnectionLifecycleHook) EmitConnectionClose(addr net.Addr) {}
 
+// EmitConnectionError noops.
 func (h *NoopConnectionLifecycleHook) EmitConnectionError() {}
 
 // NewAsyncStatsdConnectionIOHook creates a new client with the specified source, statsd address,
@@ -141,6 +147,7 @@ func NewAsyncStatsdConnectionIOHook(source string, addr string, sampleRate float
 	}, nil
 }
 
+// EmitReadError statsd implementation.
 func (h *AsyncStatsdConnectionIOHook) EmitReadError(addr net.Addr) {
 	go h.client.Count(fmt.Sprintf("event.%s.read_error", h.source), 1, map[string]string{
 		"addr":      ipFromAddr(addr),
@@ -148,6 +155,7 @@ func (h *AsyncStatsdConnectionIOHook) EmitReadError(addr net.Addr) {
 	})
 }
 
+// EmitWriteError statsd implementation.
 func (h *AsyncStatsdConnectionIOHook) EmitWriteError(addr net.Addr) {
 	go h.client.Count(fmt.Sprintf("event.%s.write_error", h.source), 1, map[string]string{
 		"addr":      ipFromAddr(addr),
@@ -155,6 +163,7 @@ func (h *AsyncStatsdConnectionIOHook) EmitWriteError(addr net.Addr) {
 	})
 }
 
+// EmitRetry statsd implementation.
 func (h *AsyncStatsdConnectionIOHook) EmitRetry(addr net.Addr) {
 	go h.client.Count(fmt.Sprintf("event.%s.io_retry", h.source), 1, map[string]string{
 		"addr":      ipFromAddr(addr),
@@ -162,15 +171,18 @@ func (h *AsyncStatsdConnectionIOHook) EmitRetry(addr net.Addr) {
 	})
 }
 
-// NoopConnectionIOHook creates a noop implementation of ConnectionIOHook.
+// NewNoopConnectionIOHook creates a noop implementation of ConnectionIOHook.
 func NewNoopConnectionIOHook() ConnectionIOHook {
 	return &NoopConnectionIOHook{}
 }
 
+// EmitReadError noops.
 func (h *NoopConnectionIOHook) EmitReadError(addr net.Addr) {}
 
+// EmitWriteError noops.
 func (h *NoopConnectionIOHook) EmitWriteError(addr net.Addr) {}
 
+// EmitRetry noops.
 func (h *NoopConnectionIOHook) EmitRetry(addr net.Addr) {}
 
 // NewAsyncStatsdProxyHook creates a new client with the specified statsd address and sample rate.
@@ -183,18 +195,21 @@ func NewAsyncStatsdProxyHook(addr string, sampleRate float32) (ProxyHook, error)
 	return &AsyncStatsdProxyHook{client}, nil
 }
 
+// EmitRequestSize statsd implementation
 func (h *AsyncStatsdProxyHook) EmitRequestSize(bytes int64, client net.Addr) {
 	go h.client.Size("size.proxy.request", bytes, map[string]string{
 		"addr": ipFromAddr(client),
 	})
 }
 
+// EmitResponseSize statsd implementation
 func (h *AsyncStatsdProxyHook) EmitResponseSize(bytes int64, upstream net.Addr) {
 	go h.client.Size("size.proxy.response", bytes, map[string]string{
 		"addr": ipFromAddr(upstream),
 	})
 }
 
+// EmitRTT statsd implementation
 func (h *AsyncStatsdProxyHook) EmitRTT(latency time.Duration, client net.Addr, upstream net.Addr) {
 	go h.client.Timing("latency.proxy.tx_rtt", latency, map[string]string{
 		"client":    ipFromAddr(client),
@@ -203,6 +218,7 @@ func (h *AsyncStatsdProxyHook) EmitRTT(latency time.Duration, client net.Addr, u
 	})
 }
 
+// EmitUpstreamLatency statsd implementation
 func (h *AsyncStatsdProxyHook) EmitUpstreamLatency(latency time.Duration, client net.Addr, upstream net.Addr) {
 	go h.client.Timing("latency.proxy.tx_upstream", latency, map[string]string{
 		"client":   ipFromAddr(client),
@@ -215,12 +231,16 @@ func NewNoopProxyHook() ProxyHook {
 	return &NoopProxyHook{}
 }
 
+// EmitRequestSize noops.
 func (h *NoopProxyHook) EmitRequestSize(bytes int64, client net.Addr) {}
 
+// EmitResponseSize noops.
 func (h *NoopProxyHook) EmitResponseSize(bytes int64, upstream net.Addr) {}
 
+// EmitRTT noops.
 func (h *NoopProxyHook) EmitRTT(latency time.Duration, client net.Addr, upstream net.Addr) {}
 
+// EmitUpstreamLatency noops.
 func (h *NoopProxyHook) EmitUpstreamLatency(latency time.Duration, client net.Addr, upstream net.Addr) {
 }
 
