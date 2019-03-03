@@ -69,15 +69,17 @@ pipeline {
             }
         }
         stage('Deploy') {
+            environment {
+                DOMAIN = 'dotproxy.static.kevinlin.info'
+                GITHUB_REMOTE = 'git@github.com:LINKIWI/dotproxy.git'
+            }
             steps {
-                // Switch to the static branch
+                // Switch to the static branch with a clean working directory
+                sh 'git rm -rf .'
+                sh 'git clean -fxd'
                 sh 'git fetch --all'
                 sh 'git checkout -f static'
                 sh 'git reset --hard origin/static'
-
-                // Clean working directory
-                sh 'git rm -rf .'
-                sh 'git clean -fxd'
 
                 // Download release archive
                 s3Download(
@@ -90,18 +92,19 @@ pipeline {
 
                 // Create release directory
                 sh "mkdir -p releases/${GIT_COMMIT}/"
-                sh "ln -sf ${GIT_COMMIT} releases/_latest"
+                sh "ln -sTfv ${GIT_COMMIT} releases/latest"
                 sh "mv bin/* releases/${GIT_COMMIT}/"
                 sh 'git add releases/'
                 sh 'git clean -fxd'
 
                 // Generate page index
-                sh 'apindex .'
+                sh "echo ${DOMAIN} > CNAME"
+                sh 'apindex . .git,CNAME'
 
                 // Commit and push
                 sh 'git add -A'
                 sh "git commit --no-verify -m \"[automatic commit] ${GIT_BRANCH}:${GIT_COMMIT}\" || :"
-                sh 'git remote add github git@github.com:LINKIWI/dotproxy.git'
+                sh "git remote add github ${GITHUB_REMOTE}"
                 sh 'git push origin HEAD'
                 sh 'git push github HEAD:gh-pages'
             }
