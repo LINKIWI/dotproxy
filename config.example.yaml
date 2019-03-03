@@ -1,0 +1,30 @@
+metrics:
+  statsd:
+    addr: localhost:8125
+    sample_rate: 1.0
+listener:
+  tcp:
+    addr: localhost:7012
+    read_timeout: 5s
+    write_timeout: 5s
+  udp:
+    addr: localhost:7012
+    max_concurrent_connections: 64
+    read_timeout: 60s
+    write_timeout: 5s
+upstream:
+  load_balancing_policy: RoundRobin
+  max_connection_retries: 10
+  servers:
+    - addr: 1.1.1.1:853
+      server_name: cloudflare-dns.com
+      connection_pool_size: 8
+      read_timeout: 5s
+      write_timeout: 5s
+      stale_timeout: 10s
+    - addr: 1.0.0.1:853
+      server_name: cloudflare-dns.com
+      connection_pool_size: 8
+      read_timeout: 5s
+      write_timeout: 5s
+      stale_timeout: 10s
