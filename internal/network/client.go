@@ -38,6 +38,9 @@ type TLSClient struct {
 type TLSClientOpts struct {
 	// PoolOpts are connection pool-specific options.
 	PoolOpts PersistentConnPoolOpts
+	// ConnectTimeout is the timeout associated with establishing a connection with the remote
+	// server.
+	ConnectTimeout time.Duration
 	// ReadTimeout is the timeout associated with each read from a remote connection.
 	ReadTimeout time.Duration
 	// WriteTimeout is the timeout associated with each write to a remote connection.
@@ -74,12 +77,12 @@ func NewTLSClient(addr string, serverName string, cxHook metrics.ConnectionLifec
 
 	// The dialer wraps a standard TLS dial with R/W timeouts.
 	dialer := func() (net.Conn, error) {
-		conn, err := tls.Dial("tcp", addr, conf)
+		conn, err := net.DialTimeout("tcp", addr, opts.ConnectTimeout)
 		if err != nil {
 			return nil, fmt.Errorf("client: error establishing connection: err=%v", err)
 		}
 
-		return NewTCPConn(conn, opts.ReadTimeout, opts.WriteTimeout), nil
+		return NewTCPConn(tls.Client(conn, conf), opts.ReadTimeout, opts.WriteTimeout), nil
 	}
 
 	pool, err := NewPersistentConnPool(dialer, cxHook, opts.PoolOpts)
