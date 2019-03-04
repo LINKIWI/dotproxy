@@ -44,28 +44,33 @@ type PersistentConn struct {
 // NewPersistentConnPool creates a connection pool with the specified dialer factory and
 // configuration options.  The dialer is a net.Conn factory that describes how a new connection is
 // created.
-func NewPersistentConnPool(dialer func() (net.Conn, error), cxHook metrics.ConnectionLifecycleHook, opts PersistentConnPoolOpts) (*PersistentConnPool, error) {
+func NewPersistentConnPool(dialer func() (net.Conn, error), cxHook metrics.ConnectionLifecycleHook, opts PersistentConnPoolOpts) *PersistentConnPool {
 	conns := data.NewMRUQueue(opts.Capacity)
 
-	// The entire pool is initially populated with live connections.
-	for i := 0; i < opts.Capacity; i++ {
-		conn, err := dialer()
-		if err != nil {
-			cxHook.EmitConnectionError()
-			return nil, err
+	// The entire pool is initially populated asynchronously with live connections, if possible.
+	go func() {
+		for i := 0; i < opts.Capacity; i++ {
+			conn, err := dialer()
+
+			// It is nonideal, but not necessarily an error, if the pool cannot be
+			// initially populated to the desired capacity. The size of the pool is
+			// inherently variable, and pool clients generally degrade gracefully when
+			// the pool fails to provide a connection.
+			if err != nil {
+				cxHook.EmitConnectionError()
+			} else {
+				cxHook.EmitConnectionOpen(conn.RemoteAddr())
+				conns.Push(conn)
+			}
 		}
-
-		cxHook.EmitConnectionOpen(conn.RemoteAddr())
-
-		conns.Push(conn)
-	}
+	}()
 
 	return &PersistentConnPool{
 		dialer:       dialer,
 		cxHook:       cxHook,
 		staleTimeout: opts.StaleTimeout,
 		conns:        conns,
-	}, nil
+	}
 }
 
 // Conn returns a single connection. It may be a cached connection that already exists in the pool,

@@ -85,10 +85,7 @@ func NewTLSClient(addr string, serverName string, cxHook metrics.ConnectionLifec
 		return NewTCPConn(tls.Client(conn, conf), opts.ReadTimeout, opts.WriteTimeout), nil
 	}
 
-	pool, err := NewPersistentConnPool(dialer, cxHook, opts.PoolOpts)
-	if err != nil {
-		return nil, fmt.Errorf("client: error creating connection pool: err=%v", err)
-	}
+	pool := NewPersistentConnPool(dialer, cxHook, opts.PoolOpts)
 
 	return &TLSClient{
 		addr: addr,
