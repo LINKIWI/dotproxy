@@ -38,6 +38,15 @@ pipeline {
                 VERSION_SHA = "${GIT_COMMIT}"
             }
             parallel {
+                stage('linux/386') {
+                    environment {
+                        GOOS = 'linux'
+                        GOARCH = '386'
+                    }
+                    steps {
+                        sh 'make'
+                    }
+                }
                 stage('linux/amd64') {
                     environment {
                         GOOS = 'linux'
@@ -51,6 +60,15 @@ pipeline {
                     environment {
                         GOOS = 'linux'
                         GOARCH = 'arm'
+                    }
+                    steps {
+                        sh 'make'
+                    }
+                }
+                stage('linux/arm64') {
+                    environment {
+                        GOOS = 'linux'
+                        GOARCH = 'arm64'
                     }
                     steps {
                         sh 'make'
