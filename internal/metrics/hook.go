@@ -51,6 +51,10 @@ type ProxyHook interface {
 	// EmitUpstreamLatency reports the latency associated with transacting with the upstream
 	// to serve a single request.
 	EmitUpstreamLatency(latency time.Duration, client net.Addr, upstream net.Addr)
+
+	// EmitError reports the occurrence of a critical error in the proxy lifecycle that causes
+	// the request to not be correctly served.
+	EmitError()
 }
 
 // AsyncStatsdConnectionLifecycleHook is an implementation of ConnectionLifecycleHook that outputs
@@ -226,6 +230,11 @@ func (h *AsyncStatsdProxyHook) EmitUpstreamLatency(latency time.Duration, client
 	})
 }
 
+// EmitError statsd implementation
+func (h *AsyncStatsdProxyHook) EmitError() {
+	go h.client.Count("event.proxy.error", 1, nil)
+}
+
 // NewNoopProxyHook creates a noop implementation of ProxyHook.
 func NewNoopProxyHook() ProxyHook {
 	return &NoopProxyHook{}
@@ -243,6 +252,9 @@ func (h *NoopProxyHook) EmitRTT(latency time.Duration, client net.Addr, upstream
 // EmitUpstreamLatency noops.
 func (h *NoopProxyHook) EmitUpstreamLatency(latency time.Duration, client net.Addr, upstream net.Addr) {
 }
+
+// EmitError noops.
+func (h *NoopProxyHook) EmitError() {}
 
 // statsdClientFactory creates a configured StatsdClient with reasonable defaults for the given
 // statsd server address and sample rate.
