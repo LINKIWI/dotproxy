@@ -38,6 +38,7 @@ type UpstreamServer struct {
 	Address            string        `yaml:"addr"`
 	ServerName         string        `yaml:"server_name"`
 	ConnectionPoolSize int           `yaml:"connection_pool_size"`
+	ConnectTimeout     time.Duration `yaml:"connect_timeout"`
 	ReadTimeout        time.Duration `yaml:"read_timeout"`
 	WriteTimeout       time.Duration `yaml:"write_timeout"`
 	StaleTimeout       time.Duration `yaml:"stale_timeout"`
