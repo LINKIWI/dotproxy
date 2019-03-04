@@ -148,7 +148,7 @@ func main() {
 	}
 
 	logger.Debug("main: using load balancing policy for request sharding: policy=%s", lbPolicy)
-	client := network.NewShardedClient(servers, lbPolicy)
+	client, _ := network.NewShardedClient(servers, lbPolicy)
 
 	// Configure server listeners
 	h := &protocol.DNSProxyHandler{
