@@ -23,7 +23,9 @@ Most use cases will benefit from a large number of maximum concurrent ingress UD
 
 ## Usage
 
-You should have a recent version of the Go toolchain installed.
+Download a precompiled binary for the target platform/architecture at the [releases index](https://dotproxy.static.kevinlin.info/releases/latest). Currently, binaries are built for most flavors of Linux.
+
+Alternatively, to compile the project manually with a recent version of the Go toolchain:
 
 ```bash
 $ make
@@ -51,6 +53,7 @@ Most behaviors are configurable via a `config.yaml` file. The following table do
 |`upstream.servers[].addr`|Yes|The address of the upstream TLS-enabled DNS server|
 |`upstream.servers[].server_name`|Yes|The TLS server hostname (used for server identity verification)|
 |`upstream.servers[].connection_pool_size`|No|Size of the connection pool to maintain for this server; environments with high traffic and/or request concurrency will generally benefit from a larger connection pool|
+|`upstream.servers[].connect_timeout`|No|Time duration string for an upstream TCP connection establishment timeout|
 |`upstream.servers[].read_timeout`|No|Time duration string for an upstream TCP read timeout|
 |`upstream.servers[].write_timeout`|No|Time duration string for an upstream TCP write timeout|
 |`upstream.servers[].stale_timeout`|No|Time duration string describing the interval of time between consecutive open connection uses after which it should be considered stale and reestablished|
