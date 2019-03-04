@@ -107,8 +107,9 @@ func main() {
 	var servers []network.Client
 	for _, server := range config.Upstream.Servers {
 		opts := network.TLSClientOpts{
-			ReadTimeout:  server.ReadTimeout,
-			WriteTimeout: server.WriteTimeout,
+			ConnectTimeout: server.ConnectTimeout,
+			ReadTimeout:    server.ReadTimeout,
+			WriteTimeout:   server.WriteTimeout,
 			PoolOpts: network.PersistentConnPoolOpts{
 				Capacity:     server.ConnectionPoolSize,
 				StaleTimeout: server.StaleTimeout,
