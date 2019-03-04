@@ -35,6 +35,7 @@ type DNSProxyOpts struct {
 // ConsumeError simply logs the proxy error.
 func (h *DNSProxyHandler) ConsumeError(ctx context.Context, err error) {
 	h.Logger.Error("%v", err)
+	h.ProxyHook.EmitError()
 }
 
 // Handle reads a request from the client connection, writes the request to the upstream connection,
