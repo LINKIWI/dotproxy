@@ -68,7 +68,12 @@ func NewTLSClient(addr string, serverName string, cxHook metrics.ConnectionLifec
 			return nil, fmt.Errorf("client: error establishing connection: err=%v", err)
 		}
 
-		return NewTCPConn(tls.Client(conn, conf), opts.ReadTimeout, opts.WriteTimeout), nil
+		tlsConn := tls.Client(conn, conf)
+		if err := tlsConn.Handshake(); err != nil {
+			return nil, fmt.Errorf("client: TLS handshake failed: err=%v", err)
+		}
+
+		return NewTCPConn(tlsConn, opts.ReadTimeout, opts.WriteTimeout), nil
 	}
 
 	pool := NewPersistentConnPool(dialer, cxHook, opts.PoolOpts)
