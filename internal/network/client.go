@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"syscall"
 	"time"
 
 	"dotproxy/internal/metrics"
@@ -51,19 +52,42 @@ type TLSClientOpts struct {
 	WriteTimeout time.Duration
 }
 
+const (
+	// tcpFastOpenConnect is the TCP socket option constant (defined in the kernel)
+	// controlling whether outgoing connections should use TCP Fast Open to reduce the number of
+	// round trips, and thus overall latency, when re-establishing a TCP connection to a server.
+	// It is not yet present in the syscall standard library for platform-agnostic usage.
+	// https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/tcp.h?h=v4.20#n120
+	tcpFastOpenConnect = 30
+)
+
 // NewTLSClient creates a TLSClient pool, connected to a specified remote address.
 // This procedure will establish the initial connections, perform TLS handshakes, and validate the
 // server identity.
 func NewTLSClient(addr string, serverName string, cxHook metrics.ConnectionLifecycleHook, opts TLSClientOpts) (*TLSClient, error) {
-	cache := tls.NewLRUClientSessionCache(opts.PoolOpts.Capacity)
-	conf := &tls.Config{
-		ServerName:         serverName,
-		ClientSessionCache: cache,
+	// Use a custom dialer that sets the TCP Fast Open socket option and a connection timeout.
+	dialer := &net.Dialer{
+		Timeout: opts.ConnectTimeout,
+		Control: func(network string, addr string, rc syscall.RawConn) error {
+			return rc.Control(func(fd uintptr) {
+				syscall.SetsockoptInt(
+					int(fd),
+					syscall.IPPROTO_TCP,
+					tcpFastOpenConnect,
+					1,
+				)
+			})
+		},
 	}
 
-	// The dialer wraps a standard TLS dial with R/W timeouts.
-	dialer := func() (net.Conn, error) {
-		conn, err := net.DialTimeout("tcp", addr, opts.ConnectTimeout)
+	conf := &tls.Config{
+		ServerName:         serverName,
+		ClientSessionCache: tls.NewLRUClientSessionCache(opts.PoolOpts.Capacity),
+	}
+
+	// The TLS dialer wraps the custom TCP dialer with a TLS encryption layer and R/W timeouts.
+	tlsDialer := func() (net.Conn, error) {
+		conn, err := dialer.Dial("tcp", addr)
 		if err != nil {
 			return nil, fmt.Errorf("client: error establishing connection: err=%v", err)
 		}
@@ -76,7 +100,7 @@ func NewTLSClient(addr string, serverName string, cxHook metrics.ConnectionLifec
 		return NewTCPConn(tlsConn, opts.ReadTimeout, opts.WriteTimeout), nil
 	}
 
-	pool := NewPersistentConnPool(dialer, cxHook, opts.PoolOpts)
+	pool := NewPersistentConnPool(tlsDialer, cxHook, opts.PoolOpts)
 
 	return &TLSClient{
 		addr:  addr,
