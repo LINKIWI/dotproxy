@@ -12,7 +12,7 @@ import (
 // connectionless protocol.
 type ConnectionLifecycleHook interface {
 	// EmitConnectionOpen reports the event that a connection was successfully opened.
-	EmitConnectionOpen(addr net.Addr)
+	EmitConnectionOpen(latency time.Duration, addr net.Addr)
 
 	// EmitConnectionClose reports the event that a connection was closed.
 	EmitConnectionClose(addr net.Addr)
@@ -103,11 +103,19 @@ func NewAsyncStatsdConnectionLifecycleHook(source string, addr string, sampleRat
 }
 
 // EmitConnectionOpen statsd implementation
-func (h *AsyncStatsdConnectionLifecycleHook) EmitConnectionOpen(addr net.Addr) {
-	go h.client.Count(fmt.Sprintf("event.%s.cx_open", h.source), 1, map[string]string{
-		"addr":      ipFromAddr(addr),
-		"transport": transportFromAddr(addr),
-	})
+func (h *AsyncStatsdConnectionLifecycleHook) EmitConnectionOpen(latency time.Duration, addr net.Addr) {
+	go func() {
+		tags := map[string]string{
+			"addr":      ipFromAddr(addr),
+			"transport": transportFromAddr(addr),
+		}
+
+		h.client.Count(fmt.Sprintf("event.%s.cx_open", h.source), 1, tags)
+
+		if latency > 0 {
+			h.client.Timing(fmt.Sprintf("latency.%s.cx_open", h.source), latency, tags)
+		}
+	}()
 }
 
 // EmitConnectionClose statsd implementation
@@ -129,7 +137,7 @@ func NewNoopConnectionLifecycleHook() ConnectionLifecycleHook {
 }
 
 // EmitConnectionOpen noops.
-func (h *NoopConnectionLifecycleHook) EmitConnectionOpen(addr net.Addr) {}
+func (h *NoopConnectionLifecycleHook) EmitConnectionOpen(latency time.Duration, addr net.Addr) {}
 
 // EmitConnectionClose noops.
 func (h *NoopConnectionLifecycleHook) EmitConnectionClose(addr net.Addr) {}

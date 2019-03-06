@@ -50,6 +50,7 @@ func NewPersistentConnPool(dialer func() (net.Conn, error), cxHook metrics.Conne
 	// The entire pool is initially populated asynchronously with live connections, if possible.
 	go func() {
 		for i := 0; i < opts.Capacity; i++ {
+			dialTimer := metrics.NewTimer()
 			conn, err := dialer()
 
 			// It is nonideal, but not necessarily an error, if the pool cannot be
@@ -59,7 +60,7 @@ func NewPersistentConnPool(dialer func() (net.Conn, error), cxHook metrics.Conne
 			if err != nil {
 				cxHook.EmitConnectionError()
 			} else {
-				cxHook.EmitConnectionOpen(conn.RemoteAddr())
+				cxHook.EmitConnectionOpen(dialTimer.Elapsed(), conn.RemoteAddr())
 				conns.Push(conn)
 			}
 		}
@@ -108,13 +109,14 @@ func (p *PersistentConnPool) Conn() (*PersistentConn, error) {
 	}
 
 	// A cached connection is not available or stale; create a new one
+	dialTimer := metrics.NewTimer()
 	conn, err := p.dialer()
 	if err != nil {
 		p.cxHook.EmitConnectionError()
 		return nil, err
 	}
 
-	p.cxHook.EmitConnectionOpen(conn.RemoteAddr())
+	p.cxHook.EmitConnectionOpen(dialTimer.Elapsed(), conn.RemoteAddr())
 
 	return NewPersistentConn(conn, closerFactory(conn)), nil
 }

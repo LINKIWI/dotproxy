@@ -146,7 +146,7 @@ func (s *TCPServer) ListenAndServe(handler ServerHandler) error {
 		}
 
 		tcpConn := NewTCPConn(conn, s.opts.ReadTimeout, s.opts.WriteTimeout)
-		s.cxHook.EmitConnectionOpen(tcpConn.RemoteAddr())
+		s.cxHook.EmitConnectionOpen(0, tcpConn.RemoteAddr())
 
 		go func() {
 			defer func() {
