@@ -105,7 +105,7 @@ func (p *PersistentConnPool) Conn() (*PersistentConn, error) {
 		// We are not particularly interested in propagating errors that may occur from
 		// closing the connection, since it is already stale anyways.
 		p.cxHook.EmitConnectionClose(conn.RemoteAddr())
-		conn.Close()
+		go conn.Close()
 	}
 
 	// A cached connection is not available or stale; create a new one
