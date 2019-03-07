@@ -210,7 +210,7 @@ func (h *DNSProxyHandler) proxyUpstream(client net.Conn, clientReq []byte, retri
 
 	h.Logger.Debug("dns_proxy: completed upstream proxy: response_bytes=%d", len(resp))
 
-	upstream.Close()
+	go upstream.Close()
 
 	return resp, upstream, err
 }
