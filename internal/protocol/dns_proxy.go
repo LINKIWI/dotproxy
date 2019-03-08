@@ -115,6 +115,7 @@ func (h *DNSProxyHandler) Handle(ctx context.Context, clientConn net.Conn) error
 
 // clientRead reads a request from the client.
 func (h *DNSProxyHandler) clientRead(conn net.Conn) ([]byte, error) {
+	clientReadTimer := metrics.NewTimer()
 	clientReq := make([]byte, 1024) // The DNS protocol limits the maximum size of a DNS packet.
 
 	clientReadBytes, err := conn.Read(clientReq)
@@ -122,6 +123,8 @@ func (h *DNSProxyHandler) clientRead(conn net.Conn) ([]byte, error) {
 		h.ClientCxIOHook.EmitReadError(conn.RemoteAddr())
 		return nil, fmt.Errorf("dns_proxy: error reading request from client: err=%v", err)
 	}
+
+	h.ClientCxIOHook.EmitRead(clientReadTimer.Elapsed(), conn.RemoteAddr())
 
 	// Trim the request buffer to only what the server was able to read
 	return clientReq[:clientReadBytes], nil
@@ -134,15 +137,21 @@ func (h *DNSProxyHandler) upstreamTransact(client net.Conn, upstream *network.Pe
 
 	/* Proxy the client request to the upstream */
 
+	upstreamWriteTimer := metrics.NewTimer()
+
 	upstreamWriteBytes, err := upstream.Write(clientReq)
 	if err != nil || upstreamWriteBytes != len(clientReq) {
 		h.UpstreamCxIOHook.EmitWriteError(upstream.RemoteAddr())
 		return nil, fmt.Errorf("dns_proxy: error writing to upstream: err=%v", err)
 	}
 
+	h.UpstreamCxIOHook.EmitWrite(upstreamWriteTimer.Elapsed(), upstream.RemoteAddr())
+
 	h.Logger.Debug("dns_proxy: wrote request to upstream: request_bytes=%d", upstreamWriteBytes)
 
 	/* Read the response from the upstream */
+
+	upstreamReadTimer := metrics.NewTimer()
 
 	// By RFC specification, the server response follows the same format as the TCP request: the
 	// first two bytes specify the length of the message.
@@ -173,13 +182,14 @@ func (h *DNSProxyHandler) upstreamTransact(client net.Conn, upstream *network.Pe
 		)
 	}
 
-	h.Logger.Debug("dns_proxy: read upstream response: response_bytes=%d", upstreamReadBytes)
-
+	h.UpstreamCxIOHook.EmitRead(upstreamReadTimer.Elapsed(), upstream.RemoteAddr())
 	h.ProxyHook.EmitUpstreamLatency(
 		upstreamTxTimer.Elapsed(),
 		client.RemoteAddr(),
 		upstream.RemoteAddr(),
 	)
+
+	h.Logger.Debug("dns_proxy: read upstream response: response_bytes=%d", upstreamReadBytes)
 
 	return append(upstreamHeader, upstreamResp...), nil
 }
@@ -217,6 +227,7 @@ func (h *DNSProxyHandler) proxyUpstream(client net.Conn, clientReq []byte, retri
 
 // clientWrite writes data back to the client.
 func (h *DNSProxyHandler) clientWrite(conn net.Conn, upstreamResp []byte) error {
+	clientWriteTimer := metrics.NewTimer()
 	clientWriteBytes, err := conn.Write(upstreamResp)
 
 	if err != nil {
@@ -232,6 +243,8 @@ func (h *DNSProxyHandler) clientWrite(conn net.Conn, upstreamResp []byte) error 
 			clientWriteBytes,
 		)
 	}
+
+	h.ClientCxIOHook.EmitWrite(clientWriteTimer.Elapsed(), conn.RemoteAddr())
 
 	return nil
 }
