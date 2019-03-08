@@ -24,8 +24,14 @@ type ConnectionLifecycleHook interface {
 // ConnectionIOHook is a metrics hook interface for reporting events related to I/O with an
 // established TCP or UDP connection.
 type ConnectionIOHook interface {
+	// EmitRead reports a successful connection read.
+	EmitRead(latency time.Duration, addr net.Addr)
+
 	// EmitReadError reports the event that a connection read failed.
 	EmitReadError(addr net.Addr)
+
+	// EmitWrite reports a successful connection write.
+	EmitWrite(latency time.Duration, addr net.Addr)
 
 	// EmitWriteError reports the event that a connection write failed.
 	EmitWriteError(addr net.Addr)
@@ -159,17 +165,43 @@ func NewAsyncStatsdConnectionIOHook(source string, addr string, sampleRate float
 	}, nil
 }
 
+// EmitRead statsd implementation.
+func (h *AsyncStatsdConnectionIOHook) EmitRead(latency time.Duration, addr net.Addr) {
+	go func() {
+		tags := map[string]string{
+			"addr":      ipFromAddr(addr),
+			"transport": transportFromAddr(addr),
+		}
+
+		h.client.Count(fmt.Sprintf("event.%s.cx_read", h.source), 1, tags)
+		h.client.Timing(fmt.Sprintf("latency.%s.cx_read", h.source), latency, tags)
+	}()
+}
+
 // EmitReadError statsd implementation.
 func (h *AsyncStatsdConnectionIOHook) EmitReadError(addr net.Addr) {
-	go h.client.Count(fmt.Sprintf("event.%s.read_error", h.source), 1, map[string]string{
+	go h.client.Count(fmt.Sprintf("event.%s.cx_read_error", h.source), 1, map[string]string{
 		"addr":      ipFromAddr(addr),
 		"transport": transportFromAddr(addr),
 	})
 }
 
+// EmitWrite statsd implementation.
+func (h *AsyncStatsdConnectionIOHook) EmitWrite(latency time.Duration, addr net.Addr) {
+	go func() {
+		tags := map[string]string{
+			"addr":      ipFromAddr(addr),
+			"transport": transportFromAddr(addr),
+		}
+
+		h.client.Count(fmt.Sprintf("event.%s.cx_write", h.source), 1, tags)
+		h.client.Timing(fmt.Sprintf("latency.%s.cx_write", h.source), latency, tags)
+	}()
+}
+
 // EmitWriteError statsd implementation.
 func (h *AsyncStatsdConnectionIOHook) EmitWriteError(addr net.Addr) {
-	go h.client.Count(fmt.Sprintf("event.%s.write_error", h.source), 1, map[string]string{
+	go h.client.Count(fmt.Sprintf("event.%s.cx_write_error", h.source), 1, map[string]string{
 		"addr":      ipFromAddr(addr),
 		"transport": transportFromAddr(addr),
 	})
@@ -177,7 +209,7 @@ func (h *AsyncStatsdConnectionIOHook) EmitWriteError(addr net.Addr) {
 
 // EmitRetry statsd implementation.
 func (h *AsyncStatsdConnectionIOHook) EmitRetry(addr net.Addr) {
-	go h.client.Count(fmt.Sprintf("event.%s.io_retry", h.source), 1, map[string]string{
+	go h.client.Count(fmt.Sprintf("event.%s.cx_io_retry", h.source), 1, map[string]string{
 		"addr":      ipFromAddr(addr),
 		"transport": transportFromAddr(addr),
 	})
@@ -188,8 +220,14 @@ func NewNoopConnectionIOHook() ConnectionIOHook {
 	return &NoopConnectionIOHook{}
 }
 
+// EmitRead noops.
+func (h *NoopConnectionIOHook) EmitRead(latency time.Duration, addr net.Addr) {}
+
 // EmitReadError noops.
 func (h *NoopConnectionIOHook) EmitReadError(addr net.Addr) {}
+
+// EmitWrite noops.
+func (h *NoopConnectionIOHook) EmitWrite(latency time.Duration, addr net.Addr) {}
 
 // EmitWriteError noops.
 func (h *NoopConnectionIOHook) EmitWriteError(addr net.Addr) {}
