@@ -65,6 +65,7 @@ func main() {
 			"client",
 			config.Metrics.Statsd.Address,
 			config.Metrics.Statsd.SampleRate,
+			meta.VersionSHA,
 		); err != nil {
 			panic(err)
 		}
@@ -73,6 +74,7 @@ func main() {
 			"upstream",
 			config.Metrics.Statsd.Address,
 			config.Metrics.Statsd.SampleRate,
+			meta.VersionSHA,
 		); err != nil {
 			panic(err)
 		}
@@ -81,6 +83,7 @@ func main() {
 			"client",
 			config.Metrics.Statsd.Address,
 			config.Metrics.Statsd.SampleRate,
+			meta.VersionSHA,
 		); err != nil {
 			panic(err)
 		}
@@ -89,6 +92,7 @@ func main() {
 			"upstream",
 			config.Metrics.Statsd.Address,
 			config.Metrics.Statsd.SampleRate,
+			meta.VersionSHA,
 		); err != nil {
 			panic(err)
 		}
@@ -96,6 +100,7 @@ func main() {
 		if proxyHook, err = metrics.NewAsyncStatsdProxyHook(
 			config.Metrics.Statsd.Address,
 			config.Metrics.Statsd.SampleRate,
+			meta.VersionSHA,
 		); err != nil {
 			panic(err)
 		}

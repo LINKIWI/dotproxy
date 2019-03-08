@@ -96,8 +96,8 @@ type NoopProxyHook struct{}
 // NewAsyncStatsdConnectionLifecycleHook creates a new client with the specified source, statsd
 // address, and statsd sample rate. The source denotes the entity with whom the server is opening
 // and closing TCP connections.
-func NewAsyncStatsdConnectionLifecycleHook(source string, addr string, sampleRate float32) (ConnectionLifecycleHook, error) {
-	client, err := statsdClientFactory(addr, sampleRate)
+func NewAsyncStatsdConnectionLifecycleHook(source string, addr string, sampleRate float32, version string) (ConnectionLifecycleHook, error) {
+	client, err := statsdClientFactory(addr, sampleRate, version)
 	if err != nil {
 		return nil, err
 	}
@@ -153,8 +153,8 @@ func (h *NoopConnectionLifecycleHook) EmitConnectionError() {}
 
 // NewAsyncStatsdConnectionIOHook creates a new client with the specified source, statsd address,
 // and statsd sample rate. The source denotes the entity with whom the server is performing I/O.
-func NewAsyncStatsdConnectionIOHook(source string, addr string, sampleRate float32) (ConnectionIOHook, error) {
-	client, err := statsdClientFactory(addr, sampleRate)
+func NewAsyncStatsdConnectionIOHook(source string, addr string, sampleRate float32, version string) (ConnectionIOHook, error) {
+	client, err := statsdClientFactory(addr, sampleRate, version)
 	if err != nil {
 		return nil, err
 	}
@@ -236,8 +236,8 @@ func (h *NoopConnectionIOHook) EmitWriteError(addr net.Addr) {}
 func (h *NoopConnectionIOHook) EmitRetry(addr net.Addr) {}
 
 // NewAsyncStatsdProxyHook creates a new client with the specified statsd address and sample rate.
-func NewAsyncStatsdProxyHook(addr string, sampleRate float32) (ProxyHook, error) {
-	client, err := statsdClientFactory(addr, sampleRate)
+func NewAsyncStatsdProxyHook(addr string, sampleRate float32, version string) (ProxyHook, error) {
+	client, err := statsdClientFactory(addr, sampleRate, version)
 	if err != nil {
 		return nil, err
 	}
@@ -304,14 +304,15 @@ func (h *NoopProxyHook) EmitError() {}
 
 // statsdClientFactory creates a configured StatsdClient with reasonable defaults for the given
 // statsd server address and sample rate.
-func statsdClientFactory(addr string, sampleRate float32) (*StatsdClient, error) {
+func statsdClientFactory(addr string, sampleRate float32, version string) (*StatsdClient, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
 	}
 
 	defaultTags := map[string]string{
-		"host": hostname,
+		"host":    hostname,
+		"version": version,
 	}
 
 	return NewStatsdClient(addr, "dotproxy", defaultTags, sampleRate)
