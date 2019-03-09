@@ -182,14 +182,14 @@ func (h *DNSProxyHandler) upstreamTransact(client net.Conn, upstream *network.Pe
 		)
 	}
 
+	h.Logger.Debug("dns_proxy: read upstream response: response_bytes=%d", upstreamReadBytes)
+
 	h.UpstreamCxIOHook.EmitRead(upstreamReadTimer.Elapsed(), upstream.RemoteAddr())
 	h.ProxyHook.EmitUpstreamLatency(
 		upstreamTxTimer.Elapsed(),
 		client.RemoteAddr(),
 		upstream.RemoteAddr(),
 	)
-
-	h.Logger.Debug("dns_proxy: read upstream response: response_bytes=%d", upstreamReadBytes)
 
 	return append(upstreamHeader, upstreamResp...), nil
 }
@@ -209,18 +209,30 @@ func (h *DNSProxyHandler) proxyUpstream(client net.Conn, clientReq []byte, retri
 	h.Logger.Debug("dns_proxy: created upstream connection: conn=%v", upstream)
 
 	resp, err := h.upstreamTransact(client, upstream, clientReq)
-	if err != nil && retries > 0 {
-		h.Logger.Debug("dns_proxy: upstream I/O failed; retrying: retry=%d", retries)
-
+	if err != nil {
+		// No matter the retry budget, destroy the connection if it fails during I/O
 		go upstream.Destroy()
-		h.UpstreamCxIOHook.EmitRetry(upstream.RemoteAddr())
 
-		return h.proxyUpstream(client, clientReq, retries-1)
+		if retries > 0 {
+			h.UpstreamCxIOHook.EmitRetry(upstream.RemoteAddr())
+			h.Logger.Debug(
+				"dns_proxy: upstream I/O failed; retrying: retry=%d",
+				retries,
+			)
+
+			return h.proxyUpstream(client, clientReq, retries-1)
+		}
+
+		h.Logger.Debug("dns_proxy: upstream I/O failed; available retries exhausted")
+
+		return nil, nil, err
 	}
 
-	h.Logger.Debug("dns_proxy: completed upstream proxy: response_bytes=%d", len(resp))
-
+	// Upstream transaction succeeded; schedule the connection for reinsertion into the
+	// long-lived connection pool
 	go upstream.Close()
+
+	h.Logger.Debug("dns_proxy: completed upstream proxy: response_bytes=%d", len(resp))
 
 	return resp, upstream, err
 }
