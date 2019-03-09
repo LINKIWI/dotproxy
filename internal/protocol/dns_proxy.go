@@ -9,6 +9,8 @@ import (
 	"dotproxy/internal/log"
 	"dotproxy/internal/metrics"
 	"dotproxy/internal/network"
+
+	"github.com/getsentry/raven-go"
 )
 
 // DNSProxyHandler is a semi-DNS-protocol-aware server handler that proxies requests between a
@@ -36,6 +38,10 @@ type DNSProxyOpts struct {
 func (h *DNSProxyHandler) ConsumeError(ctx context.Context, err error) {
 	h.Logger.Error("%v", err)
 	h.ProxyHook.EmitError()
+
+	raven.CaptureError(err, map[string]string{
+		"transport": ctx.Value(network.TransportContextKey).(network.Transport).String(),
+	})
 }
 
 // Handle reads a request from the client connection, writes the request to the upstream connection,
