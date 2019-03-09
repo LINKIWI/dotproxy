@@ -46,6 +46,9 @@ type TLSClientOpts struct {
 	// ConnectTimeout is the timeout associated with establishing a connection with the remote
 	// server.
 	ConnectTimeout time.Duration
+	// HandshakeTimeout is the timeout associated with performing a TLS handshake with the
+	// remote server, after a connection has been successfully established.
+	HandshakeTimeout time.Duration
 	// ReadTimeout is the timeout associated with each read from a remote connection.
 	ReadTimeout time.Duration
 	// WriteTimeout is the timeout associated with each write to a remote connection.
@@ -90,6 +93,12 @@ func NewTLSClient(addr string, serverName string, cxHook metrics.ConnectionLifec
 		conn, err := dialer.Dial("tcp", addr)
 		if err != nil {
 			return nil, fmt.Errorf("client: error establishing connection: err=%v", err)
+		}
+
+		// Implicitly set a TLS handshake timeout by enforcing a R/W deadline on the
+		// underlying connection.
+		if opts.HandshakeTimeout > 0 {
+			conn.SetDeadline(time.Now().Add(opts.HandshakeTimeout))
 		}
 
 		tlsConn := tls.Client(conn, conf)
