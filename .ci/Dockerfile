@@ -15,10 +15,11 @@ RUN go get -u -v golang.org/x/tools/cmd/stringer
 
 # Release dependencies
 RUN git clone https://github.com/LINKIWI/apindex.git && \
-    git -C apindex/ reset --hard daf5a3f0ef11c337b5edde684ceb0edd0f66b14b
+    git -C apindex/ reset --hard e3f64a1c9a6589b32324178dc216debf41d13d57
 RUN cd apindex/ && cmake . -DCMAKE_INSTALL_PREFIX=/usr
 RUN make -C apindex/ install
-RUN echo '<a style="font-size: 12px" href="https://github.com/LINKIWI/dotproxy">dotproxy</a>' > /usr/share/apindex/footer.template.html
+COPY resources/static/header.template.html /usr/share/apindex/header.template.html
+COPY resources/static/footer.template.html /usr/share/apindex/footer.template.html
 
 # Prepare environment for non-root user
 RUN chown -R jenkins:jenkins $HOME $GOPATH
