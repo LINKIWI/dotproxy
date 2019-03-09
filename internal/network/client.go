@@ -94,6 +94,7 @@ func NewTLSClient(addr string, serverName string, cxHook metrics.ConnectionLifec
 
 		tlsConn := tls.Client(conn, conf)
 		if err := tlsConn.Handshake(); err != nil {
+			go conn.Close()
 			return nil, fmt.Errorf("client: TLS handshake failed: err=%v", err)
 		}
 
