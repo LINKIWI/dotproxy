@@ -10,6 +10,11 @@ import (
 	"dotproxy/internal/network"
 )
 
+// ApplicationConfig is a top-level block for application-level meta configuration.
+type ApplicationConfig struct {
+	SentryDSN string `yaml:"sentry_dsn"`
+}
+
 // MetricsConfig is a top-level block for metrics configuration.
 type MetricsConfig struct {
 	Statsd *struct {
@@ -54,9 +59,10 @@ type UpstreamConfig struct {
 
 // Config describes all application configuration options.
 type Config struct {
-	Metrics  *MetricsConfig  `yaml:"metrics"`
-	Listener *ListenerConfig `yaml:"listener"`
-	Upstream *UpstreamConfig `yaml:"upstream"`
+	Application *ApplicationConfig `yaml:"application"`
+	Metrics     *MetricsConfig     `yaml:"metrics"`
+	Listener    *ListenerConfig    `yaml:"listener"`
+	Upstream    *UpstreamConfig    `yaml:"upstream"`
 }
 
 // ParseConfig parses a Config struct instance from a file specified as a path on disk.
