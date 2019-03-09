@@ -79,7 +79,7 @@ func (h *DNSProxyHandler) Handle(ctx context.Context, clientConn net.Conn) error
 	}
 
 	upstreamResp, upstreamConn, err := h.proxyUpstream(clientConn, clientReq, maxRetries)
-	if err != nil || len(upstreamResp) < 2 {
+	if err != nil {
 		return err
 	}
 
