@@ -58,6 +58,7 @@ The following table documents each field and its expected value:
 |`upstream.servers[].server_name`|Yes|The TLS server hostname (used for server identity verification)|
 |`upstream.servers[].connection_pool_size`|No|Size of the connection pool to maintain for this server; environments with high traffic and/or request concurrency will generally benefit from a larger connection pool|
 |`upstream.servers[].connect_timeout`|No|Time duration string for an upstream TCP connection establishment timeout|
+|`upstream.servers[].handshake_timeout`|No|Time duration string for an upstream TLS handshake timeout|
 |`upstream.servers[].read_timeout`|No|Time duration string for an upstream TCP read timeout|
 |`upstream.servers[].write_timeout`|No|Time duration string for an upstream TCP write timeout|
 |`upstream.servers[].stale_timeout`|No|Time duration string describing the interval of time between consecutive open connection uses after which it should be considered stale and reestablished|
