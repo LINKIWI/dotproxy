@@ -9,6 +9,8 @@ import (
 	"dotproxy/internal/metrics"
 	"dotproxy/internal/network"
 	"dotproxy/internal/protocol"
+
+	"github.com/getsentry/raven-go"
 )
 
 func main() {
@@ -45,6 +47,12 @@ func main() {
 	config, err := meta.ParseConfig(*configPath)
 	if err != nil {
 		panic(err)
+	}
+
+	// Configure error reporting
+	if config.Application != nil && config.Application.SentryDSN != "" {
+		raven.SetDSN(config.Application.SentryDSN)
+		raven.SetRelease(meta.VersionSHA)
 	}
 
 	// Configure metrics reporting
