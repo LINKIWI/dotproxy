@@ -36,7 +36,11 @@ The versioned `systemd` unit file can serve as an example for how to daemonize t
 
 ## Configuration
 
-Most behaviors are configurable via a `config.yaml` file. The following table documents each field and its expected value.
+### Configuration file
+
+dotproxy must be passed a YAML configuration file path with the `--config` flag. The versioned `config.example.yaml` in the repository root can serve as an example of a valid configuration file.
+
+The following table documents each field and its expected value:
 
 |Key|Required|Description|
 |-|-|-|
@@ -57,3 +61,15 @@ Most behaviors are configurable via a `config.yaml` file. The following table do
 |`upstream.servers[].read_timeout`|No|Time duration string for an upstream TCP read timeout|
 |`upstream.servers[].write_timeout`|No|Time duration string for an upstream TCP write timeout|
 |`upstream.servers[].stale_timeout`|No|Time duration string describing the interval of time between consecutive open connection uses after which it should be considered stale and reestablished|
+
+### Load balancing policies
+
+When there exists more than one upstream DNS server in configuration, the `upstream.load_balancing_policy` field controls how dotproxy shards requests among the servers. The policies below are mostly stateless and protocol-agnostic.
+
+|Policy|Description|
+|-|-|
+|`RoundRobin`|Select servers in [round-robin](https://en.wikipedia.org/wiki/Round-robin_scheduling), circular order. Simple, fair, but not fault tolerant.|
+|`Random`|Select a server at random. Simple, fair, async-safe, but not fault tolerant.|
+|`HistoricalConnections`|Select the server that has, up until the time of request, provided the fewest number of connections. Ideal if it is important that all servers share an equal amount of load, without regard to fault tolerance.|
+|`Availability`|Randomly select an available server. A server is considered *available* if it is successful in providing a connection. Servers that fail to provide a connection are pulled out of the availability pool for exponentially increasing durations of time, preventing them from providing connections until their unavailability period has expired. Ideal for greatest fault tolerance while maintaining roughly equal load distribution and minimizing downstream latency impact, at the cost of running potentially expensive logic every time a connection is requested.|
+|`Failover`|Prioritize a single primary server and failover to secondary server(s) only when the primary fails. Ideal if one server should serve all traffic, but there is a need for fault tolerance.|
