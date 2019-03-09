@@ -51,6 +51,12 @@ type AvailabilityShardedClient struct {
 	errorExpiry map[Client]time.Duration
 }
 
+// FailoverShardedClient provides connections in priority order, serially failing over to the next
+// client(s) in the list when the primary is not successful in providing a connection.
+type FailoverShardedClient struct {
+	clients []Client
+}
+
 const (
 	// RoundRobin statefully iterates through each client on every connection request.
 	RoundRobin LoadBalancingPolicy = iota
@@ -64,6 +70,9 @@ const (
 	// of the availability pool to prevent subsequent requests from being directed to the failed
 	// client.
 	Availability
+	// Failover provides connections from multiple clients in serial order, only failing over to
+	// secondary clients when the primary fails.
+	Failover
 )
 
 // NewShardedClient creates a single Client that provides connections from several other Clients
@@ -75,6 +84,7 @@ func NewShardedClient(clients []Client, lbPolicy LoadBalancingPolicy) (Client, e
 		Random:                NewRandomShardedClient,
 		HistoricalConnections: NewHistoricalConnectionsShardedClient,
 		Availability:          NewAvailabilityShardedClient,
+		Failover:              NewFailoverShardedClient,
 	}
 
 	factory, ok := factories[lbPolicy]
@@ -228,6 +238,28 @@ func (c *AvailabilityShardedClient) selectAvailable() (Client, error) {
 	return eligibleClients[rand.Intn(len(eligibleClients))], nil
 }
 
+// NewFailoverShardedClient is a client factory for the failover load balancing policy.
+func NewFailoverShardedClient(clients []Client) Client {
+	return &FailoverShardedClient{clients}
+}
+
+// Conn attempts to provide connections from clients in serial order, failing over to the next
+// client on error.
+func (c *FailoverShardedClient) Conn() (*PersistentConn, error) {
+	for _, client := range c.clients {
+		if conn, err := client.Conn(); err == nil {
+			return conn, nil
+		}
+	}
+
+	return nil, fmt.Errorf("sharding: all clients failed to provide a connection")
+}
+
+// Stats aggregates stats from all child clients.
+func (c *FailoverShardedClient) Stats() Stats {
+	return aggregateClientsStats(c.clients)
+}
+
 // ParseLoadBalancingPolicy parses a LoadBalancingPolicy constant from its stringified
 // representation in a case-insensitive manner.
 func ParseLoadBalancingPolicy(lbPolicy string) (LoadBalancingPolicy, bool) {
@@ -236,6 +268,7 @@ func ParseLoadBalancingPolicy(lbPolicy string) (LoadBalancingPolicy, bool) {
 		Random,
 		HistoricalConnections,
 		Availability,
+		Failover,
 	}
 
 	for _, knownLbPolicy := range knownLbPolicies {
