@@ -114,14 +114,16 @@ func (c *TLSClient) Conn() (*PersistentConn, error) {
 	conn, err := c.pool.Conn()
 
 	defer func() {
-		c.statsMutex.Lock()
-		defer c.statsMutex.Unlock()
+		go func() {
+			c.statsMutex.Lock()
+			defer c.statsMutex.Unlock()
 
-		if err != nil {
-			c.stats.FailedConnections++
-		} else {
-			c.stats.SuccessfulConnections++
-		}
+			if err != nil {
+				c.stats.FailedConnections++
+			} else {
+				c.stats.SuccessfulConnections++
+			}
+		}()
 	}()
 
 	return conn, err
