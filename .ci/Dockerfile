@@ -1,25 +1,15 @@
-FROM golang:1.12-stretch
+FROM docker.internal.kevinlin.info/infra/ci-base:0.2.0
 
-ENV HOME /home/jenkins
-
-# User configuration for proper interopability with the CI container's environment
-RUN groupadd -g 10000 jenkins
-RUN useradd -c "Jenkins user" -d $HOME -u 10000 -g 10000 -m jenkins
-
-# APT dependencies
-RUN apt-get update && apt-get install -y cmake
+ENV APINDEX_VERSION 81e3494bcbc3207f8669f3be1d7446c9e134a2a0
 
 # Build dependencies
 RUN go get -u -v golang.org/x/lint/golint
 RUN go get -u -v golang.org/x/tools/cmd/stringer
 
 # Release dependencies
-RUN git clone https://github.com/LINKIWI/apindex.git && \
-    git -C apindex/ reset --hard e3f64a1c9a6589b32324178dc216debf41d13d57
-RUN cd apindex/ && cmake . -DCMAKE_INSTALL_PREFIX=/usr
-RUN make -C apindex/ install
-COPY resources/static/header.template.html /usr/share/apindex/header.template.html
-COPY resources/static/footer.template.html /usr/share/apindex/footer.template.html
-
-# Prepare environment for non-root user
-RUN chown -R jenkins:jenkins $HOME $GOPATH
+ADD https://storage.kevinlin.info/deploy/external/apindex/$APINDEX_VERSION/release.tar.gz apindex.tar.gz
+RUN sudo tar xvf apindex.tar.gz
+RUN sudo mv bin/* /usr/local/bin/
+RUN sudo mv share/* /usr/local/share/
+COPY resources/static/header.template.html /usr/local/share/apindex/header.template.html
+COPY resources/static/footer.template.html /usr/local/share/apindex/footer.template.html
