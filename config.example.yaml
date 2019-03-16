@@ -31,3 +31,19 @@ upstream:
       read_timeout: 5s
       write_timeout: 5s
       stale_timeout: 10s
+    - addr: 8.8.8.8:853
+      server_name: dns.google
+      connection_pool_size: 8
+      connect_timeout: 100ms
+      handshake_timeout: 250ms
+      read_timeout: 5s
+      write_timeout: 5s
+      stale_timeout: 10s
+    - addr: 8.8.4.4:853
+      server_name: dns.google
+      connection_pool_size: 8
+      connect_timeout: 100ms
+      handshake_timeout: 250ms
+      read_timeout: 5s
+      write_timeout: 5s
+      stale_timeout: 10s
