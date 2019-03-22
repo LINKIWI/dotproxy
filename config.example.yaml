@@ -1,14 +1,14 @@
 metrics:
   statsd:
-    addr: localhost:8125
+    addr: 127.0.0.1:8125
     sample_rate: 1.0
 listener:
   tcp:
-    addr: localhost:7012
+    addr: 127.0.0.1:53
     read_timeout: 5s
     write_timeout: 5s
   udp:
-    addr: localhost:7012
+    addr: 127.0.0.1:53
     max_concurrent_connections: 64
     write_timeout: 5s
 upstream:
