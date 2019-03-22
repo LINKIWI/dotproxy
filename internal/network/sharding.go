@@ -182,7 +182,7 @@ func (c *AvailabilityShardedClient) Conn() (*PersistentConn, error) {
 	// timer. In other words, this is the minimum amount of time after which a client errors
 	// that it is permitted to be retried for a live connection. Otherwise, the connection is
 	// pulled out of the sharding pool for exponentially increasing durations of time.
-	failedClientExpiry := 1 * time.Minute
+	failedClientExpiry := 30 * time.Second
 
 	client, err := c.selectAvailable()
 	if err != nil {
@@ -193,9 +193,9 @@ func (c *AvailabilityShardedClient) Conn() (*PersistentConn, error) {
 	if err != nil {
 		if c.lastError[client].IsZero() || time.Since(c.lastError[client]) > failedClientExpiry {
 			// The client has either never errored before, or the last error is too far
-			// in the past. Start its exponential backoff timer at 1 second, indicating
-			// that this client will be marked unavailable for the next 1 second.
-			c.errorExpiry[client] = 1 * time.Second
+			// in the past. Start its exponential backoff timer at 100 ms, indicating
+			// that this client will be marked unavailable for the next 100 ms.
+			c.errorExpiry[client] = 100 * time.Millisecond
 		} else {
 			// The most recent client failure was too recent; double the current expiry
 			// time.
