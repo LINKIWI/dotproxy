@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -49,6 +50,8 @@ type AvailabilityShardedClient struct {
 	// Tracks the current duration of time to wait before a failed connection is once again
 	// available for use.
 	errorExpiry map[Client]time.Duration
+	// Mutex used to protect R/W operations on the state maps.
+	mutex sync.RWMutex
 }
 
 // FailoverShardedClient provides connections in priority order, serially failing over to the next
@@ -191,6 +194,8 @@ func (c *AvailabilityShardedClient) Conn() (*PersistentConn, error) {
 
 	conn, err := client.Conn()
 	if err != nil {
+		c.mutex.Lock()
+
 		if c.lastError[client].IsZero() || time.Since(c.lastError[client]) > failedClientExpiry {
 			// The client has either never errored before, or the last error is too far
 			// in the past. Start its exponential backoff timer at 100 ms, indicating
@@ -203,6 +208,8 @@ func (c *AvailabilityShardedClient) Conn() (*PersistentConn, error) {
 		}
 
 		c.lastError[client] = time.Now()
+
+		c.mutex.Unlock()
 
 		return c.Conn()
 	}
@@ -221,8 +228,10 @@ func (c *AvailabilityShardedClient) selectAvailable() (Client, error) {
 	var eligibleClients []Client
 
 	for _, candidate := range c.clients {
+		c.mutex.RLock()
 		lastError := c.lastError[candidate]
 		expiry := c.errorExpiry[candidate]
+		c.mutex.RUnlock()
 
 		// The client is considered eligible if it has never errored or if its current
 		// failure lifetime has expired.
