@@ -89,7 +89,7 @@ pipeline {
         stage('Deploy') {
             environment {
                 DOMAIN = 'dotproxy.static.kevinlin.info'
-                GITHUB_REMOTE = 'git@github.com:LINKIWI/dotproxy.git'
+                GITHUB_REMOTE = 'git@github.com:LINKIWI/dotproxy-static.git'
             }
             steps {
                 // Switch to the static branch with a clean working directory
@@ -124,7 +124,7 @@ pipeline {
                 sh "git commit --no-verify -m \"[automatic commit] ${GIT_BRANCH}:${GIT_COMMIT}\" || :"
                 sh "git remote add github ${GITHUB_REMOTE}"
                 sh 'git push origin HEAD'
-                sh 'git push github HEAD:gh-pages'
+                sh 'git push github HEAD:master'
             }
         }
     }
