@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -55,12 +56,17 @@ func (c *StatsdClient) Size(metric string, size int64, tags map[string]string) e
 // formatMetric serializes a metric and a map of tags (in addition to any default tags) into a
 // single string to ship to the time-series database backend.
 func (c *StatsdClient) formatMetric(metric string, tags map[string]string) string {
+	// Some characters, like colons, are incompatible with the statsd protocol.
+	// This standardizes on URL escaping to encode such characters that may appear in the metric
+	// name or tag keys/values.
+	escapedMetric := url.QueryEscape(metric)
+
 	if tags == nil {
 		tags = make(map[string]string)
 	}
 
 	if len(c.defaultTags)+len(tags) == 0 {
-		return metric
+		return escapedMetric
 	}
 
 	// Merge specified tags with the default tags, if available.
@@ -75,8 +81,11 @@ func (c *StatsdClient) formatMetric(metric string, tags map[string]string) strin
 	// Tags are delimited InfluxDB-style.
 	var components []string
 	for key, value := range mergedTags {
-		components = append(components, fmt.Sprintf("%s=%s", key, value))
+		components = append(
+			components,
+			fmt.Sprintf("%s=%s", url.QueryEscape(key), url.QueryEscape(value)),
+		)
 	}
 
-	return fmt.Sprintf("%s,%s", metric, strings.Join(components, ","))
+	return fmt.Sprintf("%s,%s", escapedMetric, strings.Join(components, ","))
 }
