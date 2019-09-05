@@ -13,7 +13,7 @@ all: $(DOTPROXY)
 $(DOTPROXY):
 	go generate -v ./...
 	go build \
-		-ldflags "-X dotproxy/internal/meta.VersionSHA=$(VERSION_SHA)" \
+		-ldflags "-w -s -X dotproxy/internal/meta.VersionSHA=$(VERSION_SHA)" \
 		-o $(BIN_DIR)/$(DOTPROXY)-$(GOOS)-$(GOARCH) \
 		cmd/$(DOTPROXY)/main.go
 

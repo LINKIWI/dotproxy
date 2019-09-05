@@ -1,5 +1,7 @@
 module dotproxy
 
+go 1.13
+
 require (
 	github.com/cactus/go-statsd-client/statsd v0.0.0-20190125104250-82b7a1700102
 	github.com/certifi/gocertifi v0.0.0-20190105021004-abcd57078448 // indirect
