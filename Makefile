@@ -5,8 +5,8 @@ DOTPROXY = dotproxy
 BIN_DIR = bin
 
 # OS and architecture to use for the build
-GOOS ?= $(shell go tool dist env | grep GOOS | sed 's/"//g' | sed 's/.*=//g')
-GOARCH ?= $(shell go tool dist env | grep GOARCH | sed 's/"//g' | sed 's/.*=//g')
+GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
 
 all: $(DOTPROXY)
 
