@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/getsentry/raven-go"
+
 	"dotproxy/internal/log"
 	"dotproxy/internal/metrics"
 	"dotproxy/internal/network"
-
-	"github.com/getsentry/raven-go"
 )
 
 // DNSProxyHandler is a semi-DNS-protocol-aware server handler that proxies requests between a
