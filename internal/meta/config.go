@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"dotproxy/internal/network"
 )
