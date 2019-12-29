@@ -3,8 +3,9 @@ package metrics
 import (
 	"fmt"
 	"net"
-	"os"
 	"time"
+
+	"lib.kevinlin.info/aperture"
 )
 
 // ConnectionLifecycleHook is a metrics hook interface for reporting events that occur during a TCP
@@ -66,21 +67,21 @@ type ProxyHook interface {
 // AsyncStatsdConnectionLifecycleHook is an implementation of ConnectionLifecycleHook that outputs
 // metrics asynchronously to statsd.
 type AsyncStatsdConnectionLifecycleHook struct {
-	client *StatsdClient
+	client aperture.Statsd
 	source string
 }
 
 // AsyncStatsdConnectionIOHook is an implementation of ConnectionIOHook that outputs metrics
 // asynchronously to statsd.
 type AsyncStatsdConnectionIOHook struct {
-	client *StatsdClient
+	client aperture.Statsd
 	source string
 }
 
 // AsyncStatsdProxyHook is an implementation of ProxyHook that outputs metrics asynchronously to
 // statsd.
 type AsyncStatsdProxyHook struct {
-	client *StatsdClient
+	client aperture.Statsd
 }
 
 // NoopConnectionLifecycleHook implements the ConnectionLifecycleHook interface but noops on all
@@ -96,7 +97,7 @@ type NoopProxyHook struct{}
 // NewAsyncStatsdConnectionLifecycleHook creates a new client with the specified source, statsd
 // address, and statsd sample rate. The source denotes the entity with whom the server is opening
 // and closing TCP connections.
-func NewAsyncStatsdConnectionLifecycleHook(source string, addr string, sampleRate float32, version string) (ConnectionLifecycleHook, error) {
+func NewAsyncStatsdConnectionLifecycleHook(source string, addr string, sampleRate float64, version string) (ConnectionLifecycleHook, error) {
 	client, err := statsdClientFactory(addr, sampleRate, version)
 	if err != nil {
 		return nil, err
@@ -111,7 +112,7 @@ func NewAsyncStatsdConnectionLifecycleHook(source string, addr string, sampleRat
 // EmitConnectionOpen statsd implementation
 func (h *AsyncStatsdConnectionLifecycleHook) EmitConnectionOpen(latency time.Duration, addr net.Addr) {
 	go func() {
-		tags := map[string]string{
+		tags := map[string]interface{}{
 			"addr":      ipFromAddr(addr),
 			"transport": transportFromAddr(addr),
 		}
@@ -126,7 +127,7 @@ func (h *AsyncStatsdConnectionLifecycleHook) EmitConnectionOpen(latency time.Dur
 
 // EmitConnectionClose statsd implementation
 func (h *AsyncStatsdConnectionLifecycleHook) EmitConnectionClose(addr net.Addr) {
-	go h.client.Count(fmt.Sprintf("event.%s.cx_close", h.source), 1, map[string]string{
+	go h.client.Count(fmt.Sprintf("event.%s.cx_close", h.source), 1, map[string]interface{}{
 		"addr":      ipFromAddr(addr),
 		"transport": transportFromAddr(addr),
 	})
@@ -153,7 +154,7 @@ func (h *NoopConnectionLifecycleHook) EmitConnectionError() {}
 
 // NewAsyncStatsdConnectionIOHook creates a new client with the specified source, statsd address,
 // and statsd sample rate. The source denotes the entity with whom the server is performing I/O.
-func NewAsyncStatsdConnectionIOHook(source string, addr string, sampleRate float32, version string) (ConnectionIOHook, error) {
+func NewAsyncStatsdConnectionIOHook(source string, addr string, sampleRate float64, version string) (ConnectionIOHook, error) {
 	client, err := statsdClientFactory(addr, sampleRate, version)
 	if err != nil {
 		return nil, err
@@ -168,7 +169,7 @@ func NewAsyncStatsdConnectionIOHook(source string, addr string, sampleRate float
 // EmitRead statsd implementation.
 func (h *AsyncStatsdConnectionIOHook) EmitRead(latency time.Duration, addr net.Addr) {
 	go func() {
-		tags := map[string]string{
+		tags := map[string]interface{}{
 			"addr":      ipFromAddr(addr),
 			"transport": transportFromAddr(addr),
 		}
@@ -180,7 +181,7 @@ func (h *AsyncStatsdConnectionIOHook) EmitRead(latency time.Duration, addr net.A
 
 // EmitReadError statsd implementation.
 func (h *AsyncStatsdConnectionIOHook) EmitReadError(addr net.Addr) {
-	go h.client.Count(fmt.Sprintf("event.%s.cx_read_error", h.source), 1, map[string]string{
+	go h.client.Count(fmt.Sprintf("event.%s.cx_read_error", h.source), 1, map[string]interface{}{
 		"addr":      ipFromAddr(addr),
 		"transport": transportFromAddr(addr),
 	})
@@ -189,7 +190,7 @@ func (h *AsyncStatsdConnectionIOHook) EmitReadError(addr net.Addr) {
 // EmitWrite statsd implementation.
 func (h *AsyncStatsdConnectionIOHook) EmitWrite(latency time.Duration, addr net.Addr) {
 	go func() {
-		tags := map[string]string{
+		tags := map[string]interface{}{
 			"addr":      ipFromAddr(addr),
 			"transport": transportFromAddr(addr),
 		}
@@ -201,7 +202,7 @@ func (h *AsyncStatsdConnectionIOHook) EmitWrite(latency time.Duration, addr net.
 
 // EmitWriteError statsd implementation.
 func (h *AsyncStatsdConnectionIOHook) EmitWriteError(addr net.Addr) {
-	go h.client.Count(fmt.Sprintf("event.%s.cx_write_error", h.source), 1, map[string]string{
+	go h.client.Count(fmt.Sprintf("event.%s.cx_write_error", h.source), 1, map[string]interface{}{
 		"addr":      ipFromAddr(addr),
 		"transport": transportFromAddr(addr),
 	})
@@ -209,7 +210,7 @@ func (h *AsyncStatsdConnectionIOHook) EmitWriteError(addr net.Addr) {
 
 // EmitRetry statsd implementation.
 func (h *AsyncStatsdConnectionIOHook) EmitRetry(addr net.Addr) {
-	go h.client.Count(fmt.Sprintf("event.%s.cx_io_retry", h.source), 1, map[string]string{
+	go h.client.Count(fmt.Sprintf("event.%s.cx_io_retry", h.source), 1, map[string]interface{}{
 		"addr":      ipFromAddr(addr),
 		"transport": transportFromAddr(addr),
 	})
@@ -236,7 +237,7 @@ func (h *NoopConnectionIOHook) EmitWriteError(addr net.Addr) {}
 func (h *NoopConnectionIOHook) EmitRetry(addr net.Addr) {}
 
 // NewAsyncStatsdProxyHook creates a new client with the specified statsd address and sample rate.
-func NewAsyncStatsdProxyHook(addr string, sampleRate float32, version string) (ProxyHook, error) {
+func NewAsyncStatsdProxyHook(addr string, sampleRate float64, version string) (ProxyHook, error) {
 	client, err := statsdClientFactory(addr, sampleRate, version)
 	if err != nil {
 		return nil, err
@@ -247,21 +248,21 @@ func NewAsyncStatsdProxyHook(addr string, sampleRate float32, version string) (P
 
 // EmitRequestSize statsd implementation
 func (h *AsyncStatsdProxyHook) EmitRequestSize(bytes int64, client net.Addr) {
-	go h.client.Size("size.proxy.request", bytes, map[string]string{
+	go h.client.Size("size.proxy.request", bytes, map[string]interface{}{
 		"addr": ipFromAddr(client),
 	})
 }
 
 // EmitResponseSize statsd implementation
 func (h *AsyncStatsdProxyHook) EmitResponseSize(bytes int64, upstream net.Addr) {
-	go h.client.Size("size.proxy.response", bytes, map[string]string{
+	go h.client.Size("size.proxy.response", bytes, map[string]interface{}{
 		"addr": ipFromAddr(upstream),
 	})
 }
 
 // EmitRTT statsd implementation
 func (h *AsyncStatsdProxyHook) EmitRTT(latency time.Duration, client net.Addr, upstream net.Addr) {
-	go h.client.Timing("latency.proxy.tx_rtt", latency, map[string]string{
+	go h.client.Timing("latency.proxy.tx_rtt", latency, map[string]interface{}{
 		"client":    ipFromAddr(client),
 		"upstream":  ipFromAddr(upstream),
 		"transport": transportFromAddr(client),
@@ -270,7 +271,7 @@ func (h *AsyncStatsdProxyHook) EmitRTT(latency time.Duration, client net.Addr, u
 
 // EmitUpstreamLatency statsd implementation
 func (h *AsyncStatsdProxyHook) EmitUpstreamLatency(latency time.Duration, client net.Addr, upstream net.Addr) {
-	go h.client.Timing("latency.proxy.tx_upstream", latency, map[string]string{
+	go h.client.Timing("latency.proxy.tx_upstream", latency, map[string]interface{}{
 		"client":   ipFromAddr(client),
 		"upstream": ipFromAddr(upstream),
 	})
@@ -302,20 +303,17 @@ func (h *NoopProxyHook) EmitUpstreamLatency(latency time.Duration, client net.Ad
 // EmitError noops.
 func (h *NoopProxyHook) EmitError() {}
 
-// statsdClientFactory creates a configured StatsdClient with reasonable defaults for the given
+// statsdClientFactory creates a configured statsd client with reasonable defaults for the given
 // statsd server address and sample rate.
-func statsdClientFactory(addr string, sampleRate float32, version string) (*StatsdClient, error) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		return nil, err
-	}
-
-	defaultTags := map[string]string{
-		"host":    hostname,
-		"version": version,
-	}
-
-	return NewStatsdClient(addr, "dotproxy", defaultTags, sampleRate)
+func statsdClientFactory(addr string, sampleRate float64, version string) (*aperture.Client, error) {
+	return aperture.NewClient(&aperture.Config{
+		Address:    addr,
+		Prefix:     "dotproxy",
+		SampleRate: sampleRate,
+		DefaultTags: map[string]interface{}{
+			"version": version,
+		},
+	})
 }
 
 // ipFromAddr returns the IP address from a full net.Addr, or null if unavailable.

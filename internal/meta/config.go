@@ -19,7 +19,7 @@ type ApplicationConfig struct {
 type MetricsConfig struct {
 	Statsd *struct {
 		Address    string  `yaml:"addr"`
-		SampleRate float32 `yaml:"sample_rate"`
+		SampleRate float64 `yaml:"sample_rate"`
 	} `yaml:"statsd"`
 }
 
