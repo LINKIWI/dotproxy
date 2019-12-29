@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"github.com/getsentry/raven-go"
+	"lib.kevinlin.info/aperture/lib"
 
 	"dotproxy/internal/log"
 	"dotproxy/internal/metrics"
@@ -48,7 +49,7 @@ func (h *DNSProxyHandler) ConsumeError(ctx context.Context, err error) {
 // reads the response from the upstream connection, and finally writes the response back to the
 // client. It performs some minimal protocol-aware data shaping and emits metrics along the way.
 func (h *DNSProxyHandler) Handle(ctx context.Context, clientConn net.Conn) error {
-	rttTxTimer := metrics.NewTimer()
+	rttTxTimer := lib.NewStopwatch()
 
 	/* Read the DNS request from the client */
 
@@ -67,7 +68,7 @@ func (h *DNSProxyHandler) Handle(ctx context.Context, clientConn net.Conn) error
 		// Since UDP is connectionless, the initial network read blocks until data is
 		// available. Reset the RTT timer here to get an approximately correct estimate of
 		// end-to-end latency.
-		rttTxTimer = metrics.NewTimer()
+		rttTxTimer = lib.NewStopwatch()
 
 		// By RFC specification, DNS over TCP transports should include a two-octet header
 		// in the request that denotes the size of the DNS packet. Since this request came
@@ -121,7 +122,7 @@ func (h *DNSProxyHandler) Handle(ctx context.Context, clientConn net.Conn) error
 
 // clientRead reads a request from the client.
 func (h *DNSProxyHandler) clientRead(conn net.Conn) ([]byte, error) {
-	clientReadTimer := metrics.NewTimer()
+	clientReadTimer := lib.NewStopwatch()
 	clientReq := make([]byte, 1024) // The DNS protocol limits the maximum size of a DNS packet.
 
 	clientReadBytes, err := conn.Read(clientReq)
@@ -139,11 +140,11 @@ func (h *DNSProxyHandler) clientRead(conn net.Conn) ([]byte, error) {
 // upstreamTransact performs a write-read transaction with the upstream connection and returns the
 // upstream response.
 func (h *DNSProxyHandler) upstreamTransact(client net.Conn, upstream *network.PersistentConn, clientReq []byte) ([]byte, error) {
-	upstreamTxTimer := metrics.NewTimer()
+	upstreamTxTimer := lib.NewStopwatch()
 
 	/* Proxy the client request to the upstream */
 
-	upstreamWriteTimer := metrics.NewTimer()
+	upstreamWriteTimer := lib.NewStopwatch()
 
 	upstreamWriteBytes, err := upstream.Write(clientReq)
 	if err != nil || upstreamWriteBytes != len(clientReq) {
@@ -157,7 +158,7 @@ func (h *DNSProxyHandler) upstreamTransact(client net.Conn, upstream *network.Pe
 
 	/* Read the response from the upstream */
 
-	upstreamReadTimer := metrics.NewTimer()
+	upstreamReadTimer := lib.NewStopwatch()
 
 	// By RFC specification, the server response follows the same format as the TCP request: the
 	// first two bytes specify the length of the message.
@@ -245,7 +246,7 @@ func (h *DNSProxyHandler) proxyUpstream(client net.Conn, clientReq []byte, retri
 
 // clientWrite writes data back to the client.
 func (h *DNSProxyHandler) clientWrite(conn net.Conn, upstreamResp []byte) error {
-	clientWriteTimer := metrics.NewTimer()
+	clientWriteTimer := lib.NewStopwatch()
 	clientWriteBytes, err := conn.Write(upstreamResp)
 
 	if err != nil {

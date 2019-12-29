@@ -5,6 +5,8 @@ import (
 	"net"
 	"time"
 
+	"lib.kevinlin.info/aperture/lib"
+
 	"dotproxy/internal/data"
 	"dotproxy/internal/metrics"
 )
@@ -50,7 +52,7 @@ func NewPersistentConnPool(dialer func() (net.Conn, error), cxHook metrics.Conne
 	// The entire pool is initially populated asynchronously with live connections, if possible.
 	go func() {
 		for i := 0; i < opts.Capacity; i++ {
-			dialTimer := metrics.NewTimer()
+			dialTimer := lib.NewStopwatch()
 			conn, err := dialer()
 
 			// It is nonideal, but not necessarily an error, if the pool cannot be
@@ -109,7 +111,7 @@ func (p *PersistentConnPool) Conn() (*PersistentConn, error) {
 	}
 
 	// A cached connection is not available or stale; create a new one
-	dialTimer := metrics.NewTimer()
+	dialTimer := lib.NewStopwatch()
 	conn, err := p.dialer()
 	if err != nil {
 		p.cxHook.EmitConnectionError()
