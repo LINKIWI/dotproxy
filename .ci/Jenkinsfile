@@ -33,6 +33,11 @@ pipeline {
                sh 'make lint'
             }
         }
+        stage('Generate') {
+            steps {
+                sh 'make generate'
+            }
+        }
         stage('Build') {
             environment {
                 VERSION_SHA = "${GIT_COMMIT}"

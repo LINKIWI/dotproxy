@@ -8,19 +8,32 @@ BIN_DIR = bin
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 
-all: $(DOTPROXY)
+# Generated source code
+GENERATED_SOURCE = internal/log/level.go \
+	internal/network/server.go \
+	internal/network/sharding.go
+GENERATED_ARTIFACTS = internal/log/level_string.go \
+	internal/network/loadbalancingpolicy_string.go \
+	internal/network/transport_string.go
 
-$(DOTPROXY):
-	go generate -v ./...
+binary: $(DOTPROXY)
+
+generate: $(GENERATED_ARTIFACTS)
+
+$(DOTPROXY): $(GENERATED_ARTIFACTS)
 	go build \
 		-ldflags "-w -s -X dotproxy/internal/meta.VersionSHA=$(VERSION_SHA)" \
 		-o $(BIN_DIR)/$(DOTPROXY)-$(GOOS)-$(GOARCH) \
 		cmd/$(DOTPROXY)/main.go
+
+$(GENERATED_ARTIFACTS): $(GENERATED_SOURCE)
+	go generate -v ./...
 
 lint:
 	.ci/lint.sh
 
 clean:
 	rm -f $(BIN_DIR)/*
+	rm -f $(GENERATED_ARTIFACTS)
 
 .PHONY: lint clean
