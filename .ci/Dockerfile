@@ -1,4 +1,4 @@
-FROM docker.internal.kevinlin.info/infra/ci-base:0.2.6
+FROM docker.internal.kevinlin.info/infra/ci-base:0.2.7
 
 ENV APINDEX_VERSION 81e3494bcbc3207f8669f3be1d7446c9e134a2a0
 

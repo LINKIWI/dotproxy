@@ -25,7 +25,7 @@ pipeline {
         }
         stage('Install') {
             steps {
-                sh 'go get -d ./...'
+                sh 'go mod download -x'
             }
         }
         stage('Lint') {
