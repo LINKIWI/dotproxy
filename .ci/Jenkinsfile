@@ -28,14 +28,14 @@ pipeline {
                 sh 'go mod download -x'
             }
         }
-        stage('Lint') {
-            steps {
-               sh 'make lint'
-            }
-        }
         stage('Generate') {
             steps {
                 sh 'make generate'
+            }
+        }
+        stage('Lint') {
+            steps {
+               sh 'make lint'
             }
         }
         stage('Build') {
