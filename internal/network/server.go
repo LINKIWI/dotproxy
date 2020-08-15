@@ -1,4 +1,4 @@
-//go:generate stringer -type=Transport
+//go:generate go run golang.org/x/tools/cmd/stringer -type=Transport
 
 package network
 

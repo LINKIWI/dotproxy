@@ -3,7 +3,7 @@
 set -ex
 
 # Golint should not generate any output for a clean project.
-if [[ $(golint ./...) ]]; then
+if [[ $(go run golang.org/x/lint/golint ./...) ]]; then
     echo "Found lint errors; aborting."
     exit 1
 fi

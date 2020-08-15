@@ -1,4 +1,4 @@
-//go:generate stringer -type=Level -linecomment=true
+//go:generate go run golang.org/x/tools/cmd/stringer -type=Level -linecomment=true
 
 package log
 
