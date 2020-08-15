@@ -1,6 +1,6 @@
-FROM docker.internal.kevinlin.info/infra/ci-base:0.2.7
+FROM docker.internal.kevinlin.info/infra/ci-base:0.3.0
 
-ENV APINDEX_VERSION 81e3494bcbc3207f8669f3be1d7446c9e134a2a0
+ENV APINDEX_VERSION e8ed53a76dfd2dfaf2aa444f666b4513d3108653
 
 # Build dependencies
 RUN go get -u -v golang.org/x/lint/golint
