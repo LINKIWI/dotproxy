@@ -14,15 +14,6 @@ pipeline {
     }
 
     stages {
-        stage('Environment') {
-            steps {
-                s3Download(
-                    bucket: 'internal',
-                    path: 'resources/dotproxy/config.yaml',
-                    file: 'config.yaml',
-                )
-            }
-        }
         stage('Install') {
             steps {
                 sh 'go mod download -x'
@@ -83,7 +74,7 @@ pipeline {
         }
         stage('Release') {
             steps {
-                sh 'tar -cvzf release.tar.gz bin/ init/ config.yaml'
+                sh 'tar -cvzf release.tar.gz bin/ init/'
                 s3Upload(
                     bucket: 'internal',
                     path: "deploy/${env.JOB_NAME}/${env.GIT_COMMIT}/",
