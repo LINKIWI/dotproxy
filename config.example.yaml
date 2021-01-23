@@ -1,6 +1,6 @@
 metrics:
   statsd:
-    addr: 127.0.0.1:8125
+    addr: udp://127.0.0.1:8125
     sample_rate: 1.0
 listener:
   tcp:

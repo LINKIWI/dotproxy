@@ -307,9 +307,10 @@ func (h *NoopProxyHook) EmitError() {}
 // statsd server address and sample rate.
 func statsdClientFactory(addr string, sampleRate float64, version string) (*aperture.Client, error) {
 	return aperture.NewClient(&aperture.Config{
-		Address:    addr,
-		Prefix:     "dotproxy",
-		SampleRate: sampleRate,
+		Address:                addr,
+		Prefix:                 "dotproxy",
+		SampleRate:             sampleRate,
+		TransportProbeInterval: 10 * time.Second,
 		DefaultTags: map[string]interface{}{
 			"version": version,
 		},
