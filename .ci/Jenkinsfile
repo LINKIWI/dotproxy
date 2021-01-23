@@ -31,6 +31,7 @@ pipeline {
         }
         stage('Build') {
             environment {
+                CGO_ENABLED = 0
                 VERSION_SHA = "${GIT_COMMIT}"
             }
             parallel {
