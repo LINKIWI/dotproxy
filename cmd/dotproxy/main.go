@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"dotproxy/internal/log"
 	"dotproxy/internal/meta"
@@ -16,7 +17,7 @@ import (
 func main() {
 	configPath := flag.String(
 		"config",
-		"config.yaml",
+		os.Getenv("DOTPROXY_CONFIG"),
 		"path to the configuration file on disk",
 	)
 	version := flag.Bool(
