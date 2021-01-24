@@ -109,6 +109,7 @@ func (h *DNSProxyHandler) Handle(ctx context.Context, clientConn net.Conn) error
 
 	/* Clean up and report end-to-end metrics */
 
+	h.ProxyHook.EmitProcess(clientConn.RemoteAddr(), upstreamConn.RemoteAddr())
 	h.ProxyHook.EmitRequestSize(int64(len(clientReq)), clientConn.RemoteAddr())
 	h.ProxyHook.EmitResponseSize(int64(len(upstreamResp)), upstreamConn.RemoteAddr())
 	h.ProxyHook.EmitRTT(
