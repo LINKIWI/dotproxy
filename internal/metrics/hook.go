@@ -3,6 +3,7 @@ package metrics
 import (
 	"fmt"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"lib.kevinlin.info/aperture"
@@ -59,6 +60,9 @@ type ProxyHook interface {
 	// to serve a single request.
 	EmitUpstreamLatency(latency time.Duration, client net.Addr, upstream net.Addr)
 
+	// EmitProcess reports the occurrence of a processed proxy request.
+	EmitProcess(client net.Addr, upstream net.Addr)
+
 	// EmitError reports the occurrence of a critical error in the proxy lifecycle that causes
 	// the request to not be correctly served.
 	EmitError()
@@ -81,7 +85,8 @@ type AsyncStatsdConnectionIOHook struct {
 // AsyncStatsdProxyHook is an implementation of ProxyHook that outputs metrics asynchronously to
 // statsd.
 type AsyncStatsdProxyHook struct {
-	client aperture.Statsd
+	client     aperture.Statsd
+	sequenceID int64
 }
 
 // NoopConnectionLifecycleHook implements the ConnectionLifecycleHook interface but noops on all
@@ -243,7 +248,7 @@ func NewAsyncStatsdProxyHook(addr string, sampleRate float64, version string) (P
 		return nil, err
 	}
 
-	return &AsyncStatsdProxyHook{client}, nil
+	return &AsyncStatsdProxyHook{client: client}, nil
 }
 
 // EmitRequestSize statsd implementation
@@ -277,6 +282,25 @@ func (h *AsyncStatsdProxyHook) EmitUpstreamLatency(latency time.Duration, client
 	})
 }
 
+// EmitProcess statsd implementation
+func (h *AsyncStatsdProxyHook) EmitProcess(client net.Addr, upstream net.Addr) {
+	go func() {
+		tags := map[string]interface{}{
+			"client":   ipFromAddr(client),
+			"upstream": ipFromAddr(upstream),
+		}
+
+		h.client.Count("event.proxy.process", 1, tags)
+		h.client.Gauge(
+			"gauge.proxy.sequence_id",
+			float64(atomic.LoadInt64(&h.sequenceID)),
+			tags,
+		)
+
+		atomic.AddInt64(&h.sequenceID, 1)
+	}()
+}
+
 // EmitError statsd implementation
 func (h *AsyncStatsdProxyHook) EmitError() {
 	go h.client.Count("event.proxy.error", 1, nil)
@@ -299,6 +323,9 @@ func (h *NoopProxyHook) EmitRTT(latency time.Duration, client net.Addr, upstream
 // EmitUpstreamLatency noops.
 func (h *NoopProxyHook) EmitUpstreamLatency(latency time.Duration, client net.Addr, upstream net.Addr) {
 }
+
+// EmitProcess noops.
+func (h *NoopProxyHook) EmitProcess(client net.Addr, upstream net.Addr) {}
 
 // EmitError noops.
 func (h *NoopProxyHook) EmitError() {}
