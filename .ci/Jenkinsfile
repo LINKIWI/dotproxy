@@ -74,54 +74,66 @@ pipeline {
             }
         }
         stage('Release') {
+            environment {
+                RELEASE_WORKDIR = sh(
+                    script: 'mktemp -d',
+                    returnStdout: true,
+                ).trim()
+            }
             steps {
+                // Binary
                 sh 'tar -cvzf release.tar.gz bin/ init/'
                 s3Upload(
                     bucket: 'internal',
                     path: "deploy/${env.JOB_NAME}/${env.GIT_COMMIT}/",
                     file: 'release.tar.gz',
                 )
-            }
-        }
-        stage('Deploy') {
-            environment {
-                DOMAIN = 'dotproxy.static.kevinlin.info'
-                GITHUB_REMOTE = 'git@github.com:LINKIWI/dotproxy-static.git'
-            }
-            steps {
-                // Switch to the static branch with a clean working directory
-                sh 'git rm -rf .'
-                sh 'git clean -fxd'
-                sh 'git fetch --all'
-                sh 'git checkout -f static'
-                sh 'git reset --hard origin/static'
 
+                // Static site
+                script {
+                    deleteDir()
+                }
+                git(
+                    url: env.GIT_URL - '.git',
+                    branch: 'static',
+                )
                 // Download release archive
                 s3Download(
                     bucket: 'internal',
                     path: "deploy/${env.JOB_NAME}/${env.GIT_COMMIT}/release.tar.gz",
                     file: 'release.tar.gz',
                 )
-                sh 'tar xvf release.tar.gz'
+                sh "tar -C ${RELEASE_WORKDIR} -xvf release.tar.gz"
                 sh 'rm release.tar.gz'
-
                 // Create release directory
-                sh "mkdir -p releases/${GIT_COMMIT}/"
+                sh "mkdir -pv releases/${GIT_COMMIT}/"
                 sh "ln -sTfv ${GIT_COMMIT} releases/latest"
-                sh "mv bin/* releases/${GIT_COMMIT}/"
-                sh 'git add releases/'
-                sh 'git clean -fxd'
-
+                sh "mv -v ${RELEASE_WORKDIR}/bin/* releases/${GIT_COMMIT}/"
                 // Generate page index
-                sh "echo ${DOMAIN} > CNAME"
-                sh 'apindex . .git,CNAME'
-
-                // Commit and push
-                sh 'git add -A'
-                sh "git commit --no-verify -m \"[automatic commit] ${GIT_BRANCH}:${GIT_COMMIT}\" || :"
-                sh "git remote add github ${GITHUB_REMOTE}"
-                sh 'git push origin HEAD'
-                sh 'git push github HEAD:master'
+                sh 'apindex . .git,CNAME,release'
+                // Create release
+                sh "tar -cvzf release.tar.gz index.html releases/index.html releases/${GIT_COMMIT}/ releases/latest/"
+                s3Upload(
+                    bucket: 'internal',
+                    path: "deploy/${env.JOB_NAME}-static/${env.GIT_COMMIT}/",
+                    file: 'release.tar.gz',
+                )
+            }
+        }
+        stage('Deploy') {
+            steps {
+                build(
+                    job: 'task--static-deploy',
+                    parameters: [
+                        string(name: 'RELEASE_ARTIFACT', value: "${env.JOB_NAME}-static"),
+                        string(name: 'RELEASE_VERSION', value: "${env.GIT_COMMIT}"),
+                        string(name: 'DOMAIN', value: 'dotproxy.static.kevinlin.info'),
+                        string(name: 'GIT_REMOTE_INTERNAL', value: "${env.GIT_URL}"),
+                        string(name: 'GIT_REMOTE_GITHUB', value: 'git@github.com:LINKIWI/dotproxy-static.git'),
+                        booleanParam(name: 'CLEAN_DEPLOY', value: false),
+                    ],
+                    wait: true,
+                )
             }
         }
     }
