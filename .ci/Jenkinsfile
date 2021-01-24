@@ -136,5 +136,55 @@ pipeline {
                 )
             }
         }
+        stage('Publish') {
+            environment {
+                PACKAGE_VERSION = sh(
+                    script: 'git show ' +
+                            '--no-patch ' +
+                            '--no-notes ' +
+                            "--date=format:\"%Y.%m.%d-%H.%M.%S-\$(echo ${GIT_COMMIT} | cut -c -8)\" " +
+                            "--pretty=format:'%cd' ${GIT_COMMIT}",
+                    returnStdout: true,
+                ).trim()
+            }
+            parallel {
+                stage('linux/amd64') {
+                    steps {
+                        build(
+                            job: 'task--package',
+                            parameters: [
+                                string(name: 'RELEASE_ARTIFACT', value: "${env.JOB_NAME}"),
+                                string(name: 'RELEASE_VERSION', value: "${env.GIT_COMMIT}"),
+                                string(name: 'PACKAGE_NAME', value: "${env.JOB_NAME}"),
+                                string(name: 'PACKAGE_VERSION', value: "${env.PACKAGE_VERSION}"),
+                                string(name: 'PACKAGE_DESCRIPTION', value: 'High performance DNS-over-TLS proxy'),
+                                string(name: 'PACKAGE_ARCHITECTURE', value: 'amd64'),
+                                string(name: 'BINARY_SPEC', value: 'dotproxy:bin/dotproxy-linux-amd64'),
+                                string(name: 'SYSTEMD_SERVICES', value: 'init/dotproxy.service'),
+                            ],
+                            wait: true,
+                        )
+                    }
+                }
+                stage('linux/arm') {
+                    steps {
+                        build(
+                            job: 'task--package',
+                            parameters: [
+                                string(name: 'RELEASE_ARTIFACT', value: "${env.JOB_NAME}"),
+                                string(name: 'RELEASE_VERSION', value: "${env.GIT_COMMIT}"),
+                                string(name: 'PACKAGE_NAME', value: "${env.JOB_NAME}"),
+                                string(name: 'PACKAGE_VERSION', value: "${env.PACKAGE_VERSION}"),
+                                string(name: 'PACKAGE_DESCRIPTION', value: 'High performance DNS-over-TLS proxy'),
+                                string(name: 'PACKAGE_ARCHITECTURE', value: 'armhf'),
+                                string(name: 'BINARY_SPEC', value: 'dotproxy:bin/dotproxy-linux-arm'),
+                                string(name: 'SYSTEMD_SERVICES', value: 'init/dotproxy.service'),
+                            ],
+                            wait: true,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
