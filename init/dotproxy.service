@@ -1,17 +1,16 @@
-# systemd service for the dotproxy daemon.
-# Modify the command-line parameters as necessary before installing.
-
 [Unit]
-Description=DNS-over-TLS proxy
+Description=High performance DNS-over-TLS proxy
 After=network.target
 
 [Service]
 Type=simple
 Restart=always
-RestartSec=1
+RestartSec=30
 User=root
 SyslogIdentifier=dotproxy
-ExecStart=/storage/services/dotproxy/bin/dotproxy-linux-amd64 --config /storage/services/dotproxy/config.yaml --verbosity info
+Environment=DOTPROXY_CONFIG=/etc/dotproxy/config.yaml
+EnvironmentFile=-/etc/default/dotproxy
+ExecStart=/usr/bin/dotproxy --verbosity info
 
 [Install]
 WantedBy=multi-user.target
